@@ -254,7 +254,7 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 8; // pg 554
+	TPM2->MOD = 7; // pg 554
 	TPM2_C0V = leftMotorSpeed;
 	TPM2_C1V = rightMotorSpeed;
 	
@@ -394,27 +394,25 @@ void parseCommand(void *argument) {
 
 int polarity = 1;
 
-void left_motor_thread(void *argument) {
+void motor_thread(void *argument) {
 	for (;;) {
-		osDelay(10);
-		if (movingBackwards) {
-			PTB->PSOR |= MASK(BACKWARDS);
-			TPM2_C0V = 8 - leftMotorSpeed;
+		myDataPkt rxData;
+		osMessageQueueGet(commandQueue, &rxData, NULL, osWaitForever);
+		
+		if (!rxData.leftMotorStrength && !rxData.rightMotorStrength) {
+			stationary = 1;
 		} else {
-			PTB->PCOR |= MASK(BACKWARDS);
-			TPM2_C0V = leftMotorSpeed;
+			stationary = 0;
 		}
-	}
-}
-void right_motor_thread(void *argument) {
-	for (;;) {
-		osDelay(10);
-		if (movingBackwards) {
+		
+		if (rxData.isBackward) {
 			PTB->PSOR |= MASK(BACKWARDS);
-			TPM2_C0V = 8 - rightMotorSpeed;
+			TPM2_C0V = 8 - rxData.leftMotorStrength;
+			TPM2_C1V = 8 - rxData.rightMotorStrength;
 		} else {
 			PTB->PCOR |= MASK(BACKWARDS);
-			TPM2_C0V = rightMotorSpeed;
+			TPM2_C0V = rxData.leftMotorStrength;
+			TPM2_C1V = rxData.rightMotorStrength;
 		}
 	}
 }
@@ -574,10 +572,7 @@ const osThreadAttr_t greenLed8Priority = {
 	//.priority = osPriorityBelowNormal
 	.priority = osPriorityNormal
 };
-const osThreadAttr_t leftMotorPriority = {
-	.priority = osPriorityHigh
-};
-const osThreadAttr_t rightMotorPriority = {
+const osThreadAttr_t motorPriority = {
 	.priority = osPriorityHigh
 };
 int main (void) {
@@ -595,9 +590,7 @@ int main (void) {
 	greenLedMutex = osMutexNew(NULL);
 	
 	// Motor threads
-	//osThreadNew(left_motor_thread, NULL, &leftMotorPriority);
-	//osThreadNew(right_motor_thread, NULL, &rightMotorPriority);
-	//osThreadNew(turn_motor_thread, NULL, &rightMotorPriority);
+	osThreadNew(motor_thread, NULL, &motorPriority);
 	
 	// LED threads
 	//osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
