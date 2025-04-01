@@ -50,8 +50,8 @@ void initUART2(uint32_t baud_rate)
     SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
     SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
 
-    PORTE->PCR[UART_TX_PORTE22] &= ~PORT_PCR_MUX_MASK;
-    PORTE->PCR[UART_TX_PORTE22] |= PORT_PCR_MUX(4);
+    //PORTE->PCR[UART_TX_PORTE22] &= ~PORT_PCR_MUX_MASK;
+    //PORTE->PCR[UART_TX_PORTE22] |= PORT_PCR_MUX(4);
 
     PORTE->PCR[UART_RX_PORTE23] &= ~PORT_PCR_MUX_MASK;
     PORTE->PCR[UART_RX_PORTE23] |= PORT_PCR_MUX(4);
@@ -190,7 +190,7 @@ void ledControl(led_colors_t colour, led_switch_t switchOn) {
 
 void InitGPIO(void) {
 	// Enable Clock to PORTB & PORTC
-	SIM->SCGC5 |= (SIM_SCGC5_PORTB_MASK) || (SIM_SCGC5_PORTC_MASK);
+	SIM->SCGC5 |= ((SIM_SCGC5_PORTB_MASK) | (SIM_SCGC5_PORTC_MASK));
 	
 	// Configure MUX settings to make all GREEN_LEDx pins GPIO
 	PORTC->PCR[GREEN_LED1] &= ~PORT_PCR_MUX_MASK;
@@ -269,7 +269,8 @@ void initMotorPWM() { // TPM2
 	TPM2_C1SC &= ~((TPM_CnSC_ELSB_MASK) | (TPM_CnSC_ELSA_MASK) | (TPM_CnSC_MSB_MASK) | (TPM_CnSC_MSA_MASK)); // Clear bits
 	TPM2_C1SC |= (TPM_CnSC_ELSB(1) | TPM_CnSC_MSB(1));
 
-}/*
+}
+/*
 void initPWM(uint16_t mod_value) {
 	SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
 	
@@ -381,12 +382,13 @@ void parseCommand(void *argument) {
 	for (;;) {
 		uint8_t command = UART2_Receive_Poll();
 		myDataPkt dataPkt;
-		dataPkt.leftMotorStrength = (command & 0b00111000) >> 2;
+		dataPkt.leftMotorStrength = (command & 0b00111000) >> 3;
 		dataPkt.rightMotorStrength = (command & 0b00000111);
-		dataPkt.isBackward = (command &  0b01000000) >> 6;
-		dataPkt.playEndingMusic = (command &  0b10000000) >> 7;
+		dataPkt.isBackward = (command & 0b01000000) >> 6;
+		dataPkt.playEndingMusic = (command & 0b10000000) >> 7;
 		
 		osMessageQueuePut(commandQueue, &dataPkt, NULL, 0);
+		
 		// use the following command
 		//osMessageQueueGet(commandQueue, &myRxData, NULL, osWaitForever); // myRxData is a myDataPkt defined in the receiving thread
 	}
@@ -583,14 +585,16 @@ int main (void) {
 	offRGB();
 	initPWM(0);
 	initMotorPWM();
+	initUART2(BAUD_RATE);
   // ...
 	
   osKernelInitialize();                 // Initialize CMSIS-RTOS
-	myMutex = osMutexNew(NULL);
-	greenLedMutex = osMutexNew(NULL);
+	//myMutex = osMutexNew(NULL);
+	//greenLedMutex = osMutexNew(NULL);
 	
 	// Motor threads
 	osThreadNew(motor_thread, NULL, &motorPriority);
+	osThreadNew(parseCommand, NULL, &motorPriority);
 	
 	// LED threads
 	//osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
@@ -606,7 +610,7 @@ int main (void) {
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
-	osThreadNew(play_finish, NULL, NULL);
+	//osThreadNew(play_finish, NULL, NULL);
   osKernelStart();                      // Start thread execution
 	
   for (;;) {}
