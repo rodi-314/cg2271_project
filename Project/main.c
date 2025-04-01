@@ -19,6 +19,7 @@ bool stationary = false;
 #define GREEN_LED6	3 	// PortC Pin 3
 #define GREEN_LED7	0 	// PortC Pin 0
 #define GREEN_LED8	7 	// PortC Pin 7
+#define BACKWARDS 1 // PortB Pin 1 Backwards Motor, Ivory wire
 #define MASK(x) (1 << (x))
 
 /*----------------------------------------------------------------------------
@@ -188,10 +189,10 @@ void ledControl(led_colors_t colour, led_switch_t switchOn) {
 }
 
 void InitGPIO(void) {
-// Enable Clock to PORTC
-	SIM->SCGC5 |= (SIM_SCGC5_PORTC_MASK);
+	// Enable Clock to PORTB & PORTC
+	SIM->SCGC5 |= (SIM_SCGC5_PORTB_MASK) || (SIM_SCGC5_PORTC_MASK);
 	
-// Configure MUX settings to make all GREEN_LEDx pins GPIO
+	// Configure MUX settings to make all GREEN_LEDx pins GPIO
 	PORTC->PCR[GREEN_LED1] &= ~PORT_PCR_MUX_MASK;
 	PORTC->PCR[GREEN_LED1] |= PORT_PCR_MUX(1);
 	PORTC->PCR[GREEN_LED2] &= ~PORT_PCR_MUX_MASK;
@@ -211,6 +212,10 @@ void InitGPIO(void) {
 	PORTC->PCR[RED_LED] &= ~PORT_PCR_MUX_MASK;
 	PORTC->PCR[RED_LED] |= PORT_PCR_MUX(1);
 	
+	// Configure MUX settings to make motor backwards pin GPIO
+	PORTB->PCR[BACKWARDS] &= ~PORT_PCR_MUX_MASK;
+	PORTB->PCR[BACKWARDS] |= PORT_PCR_MUX(1);
+	
 	// Set Data Direction Registers for PortC
 	PTC->PDDR |= (MASK(GREEN_LED1) |
 								MASK(GREEN_LED2) |
@@ -221,16 +226,18 @@ void InitGPIO(void) {
 								MASK(GREEN_LED7) |
 								MASK(GREEN_LED8) |
 								MASK(RED_LED));
+								
+	// Set Data Direction Registers for PortC
+	PTB->PDDR |= MASK(BACKWARDS);
 }
  
 #define PTB0_Pin 0 // Speaker 				(TPM1_CH0)
-#define PTB1_Pin 1 // Backwards motor	(TPM1_CH1) Ivory wire
 #define PTB2_Pin 2 // Left motor FW		(TPM2_CH0) Blue wire
 #define PTB3_Pin 3 // Right motor FW 	(TPM2_CH1) Purple wire
 
-int leftMotorSpeed = 0; 			// Out of 100
-int rightMotorSpeed = 0; 			// Out of 100
-int backwardMotorSpeed = 0;		// Out of ???, depends on speaker lol which is fked
+int leftMotorSpeed = 0; 			// Out of 8
+int rightMotorSpeed = 0; 			// Out of 8
+bool movingBackwards = false;		// False: forwards and True: backwards
 
 void initMotorPWM() { // TPM2
 	SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
@@ -247,7 +254,7 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 100; // pg 554
+	TPM2->MOD = 8; // pg 554
 	TPM2_C0V = leftMotorSpeed;
 	TPM2_C1V = rightMotorSpeed;
 	
@@ -310,7 +317,6 @@ void initPWM(uint16_t mod_value) {
  
  //Enables the clock gate for Port C
  SIM_SCGC5 |= SIM_SCGC5_PORTC_MASK;
- 
  
  PORTC->PCR[PTC4_Pin] &= ~PORT_PCR_MUX_MASK; //Clear bit 10 to 8
  PORTC->PCR[PTC4_Pin] |= PORT_PCR_MUX(4); //Enable Timer function of pin
@@ -390,160 +396,26 @@ int polarity = 1;
 
 void left_motor_thread(void *argument) {
 	for (;;) {
-		leftMotorSpeed = leftMotorSpeed + polarity;
 		osDelay(10);
-		if (leftMotorSpeed == 100) {
-			polarity = -1;
-		} else if (leftMotorSpeed == 0) {
-			polarity = 1;
-		}	
-		TPM2_C0V = leftMotorSpeed;
+		if (movingBackwards) {
+			PTB->PSOR |= MASK(BACKWARDS);
+			TPM2_C0V = 8 - leftMotorSpeed;
+		} else {
+			PTB->PCOR |= MASK(BACKWARDS);
+			TPM2_C0V = leftMotorSpeed;
+		}
 	}
 }
 void right_motor_thread(void *argument) {
 	for (;;) {
-		rightMotorSpeed = rightMotorSpeed + polarity;
 		osDelay(10);
-		if (rightMotorSpeed == 100) {
-			polarity = -1;
-		} else if (rightMotorSpeed == 0) {
-			polarity = 1;
+		if (movingBackwards) {
+			PTB->PSOR |= MASK(BACKWARDS);
+			TPM2_C0V = 8 - rightMotorSpeed;
+		} else {
+			PTB->PCOR |= MASK(BACKWARDS);
+			TPM2_C0V = rightMotorSpeed;
 		}
-		TPM2_C1V = rightMotorSpeed;
-	}
-}
-void turn_motor_thread(void *argument) {
-	osDelay(10000);
-		TPM2_C0V = 40;
-		TPM2_C1V = 40;
-}
-void quaver() {
-	osDelay(210);
-	SIM_SCGC5 &= ~SIM_SCGC5_PORTB_MASK;
-	osDelay(10);
-	SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
-}
-void semi_quaver() {
-	osDelay(100);
-	SIM_SCGC5 &= ~SIM_SCGC5_PORTB_MASK;
-	osDelay(10);
-	SIM_SCGC5 |= SIM_SCGC5_PORTB_MASK;
-}
-void B4_sq() {
-	TPM1->MOD = 759; // B4
-	TPM1_C0V = 759 / 2;
-	semi_quaver();
-}
-void B4_q() {
-	TPM1->MOD = 759; // B4
-	TPM1_C0V = 759 / 2;
-	quaver();
-}
-void E5_sq() {
-	TPM1->MOD = 569; // E5
-	TPM1_C0V = 569 / 2;
-	semi_quaver();
-}
-void E5_q() {
-	TPM1->MOD = 569; // E5
-	TPM1_C0V = 569 / 2;
-	quaver();
-}
-void D5_sq() {
-	TPM1->MOD = 638; // D5
-	TPM1_C0V = 638 / 2;
-	semi_quaver();
-}
-void D5_q() {
-	TPM1->MOD = 638; // D5
-	TPM1_C0V = 638 / 2;
-	quaver();
-}
-void A4_sq() {
-	TPM1->MOD = 852; // E5
-	TPM1_C0V = 852 / 2;
-	semi_quaver();
-}
-void music_thread (void *argument) {
-	for (;;) {
-		osDelay(1000);
-		//TPM1->MOD = 1860; // B4
-		//TPM1_C0V = TPM1->MOD / 2;
-		//TPM1->CONTROLS[1].CnV = TPM1->MOD / 2;
-		//semi_quaver();
-		TPM1->MOD = 1277; // B4
-		TPM1_C0V = TPM1->MOD / 2;
-		quaver();
-		TPM1->MOD = 1136; // B4
-		TPM1_C0V = TPM1->MOD / 2;
-		quaver();
-		TPM1->MOD = 957; // B4
-		TPM1_C0V = TPM1->MOD / 2;
-		quaver();
-		TPM1->MOD = 638; // B4
-		TPM1_C0V = TPM1->MOD / 2;
-		quaver();
-		TPM1->MOD = 759; // B4
-		TPM1_C0V = TPM1->MOD / 2;
-		quaver();
-		/*
-		// Bar1
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_q();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		E5_sq();
-		E5_sq();
-		// Bar2
-		E5_sq();
-		E5_sq();
-		E5_sq();
-		E5_sq();
-		E5_q();
-		D5_sq();
-		D5_sq();
-		D5_sq();
-		D5_sq();
-		D5_sq();
-		D5_sq();
-		D5_q();
-		A4_sq();
-		// Bar3
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_q();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		E5_sq();
-		E5_sq();
-		// Bar4
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_q();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		B4_sq();
-		E5_sq();
-		E5_sq();
-		*/
 	}
 }
 
