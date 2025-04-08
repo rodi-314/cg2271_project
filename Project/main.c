@@ -15,7 +15,7 @@ bool stationary = false;
 #define GREEN_LED2	10	// PortC Pin 10
 #define GREEN_LED3	6 	// PortC Pin 6
 #define GREEN_LED4	5 	// PortC Pin 5
-#define GREEN_LED5	4 	// PortC Pin 4
+#define GREEN_LED5	8 //4 	// PortC Pin 4
 #define GREEN_LED6	3 	// PortC Pin 3
 #define GREEN_LED7	0 	// PortC Pin 0
 #define GREEN_LED8	7 	// PortC Pin 7
@@ -52,10 +52,6 @@ void initUART2(uint32_t baud_rate)
     SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
     SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
 
-		// No need for transmit
-    //PORTE->PCR[UART_TX_PORTE22] &= ~PORT_PCR_MUX_MASK;
-    //PORTE->PCR[UART_TX_PORTE22] |= PORT_PCR_MUX(4);
-
     PORTE->PCR[UART_RX_PORTE23] &= ~PORT_PCR_MUX_MASK;
     PORTE->PCR[UART_RX_PORTE23] |= PORT_PCR_MUX(4);
 
@@ -84,21 +80,6 @@ void UART2_IRQHandler() {
 		command = (UART2->D);
 	}	
 }
-
-/* UART2 Transmit Poll
-void UART2_Transmit_Poll(uint8_t data)
-{
-    while (!(UART2->S1 & UART_S1_TDRE_MASK));
-    UART2->D = data;
-}
-*/
-
-/* UART2 Receive Poll 
-uint8_t UART2_Receive_Poll(void)
-{
-    while (!(UART2->S1 & UART_S1_RDRF_MASK));
-    return (UART2->D);
-} */
 
 /*----------------------------------------------------------------------------
  * LED THINGS
@@ -179,7 +160,7 @@ void ledControl(led_colors_t colour, led_switch_t switchOn) {
 		}	
 	} else {
 			//offRGB();
-				switch(colour)
+		switch(colour)
 		{
 			case RED_LED: 
 				PTC->PCOR |= MASK(RED_LED);
@@ -449,155 +430,7 @@ void motor_thread(void *argument) {
 		}
 	}
 }
-/*
-void led_green_thread1 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led1, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led1, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(7000);
-		} else {
-			ledControl(green_led1, led_on); // led_on
-			ledControl(green_led2, led_on); // led_on
-			ledControl(green_led3, led_on); // led_on
-			ledControl(green_led4, led_on); // led_on
-			ledControl(green_led5, led_on); // led_on
-			ledControl(green_led6, led_on); // led_on
-			ledControl(green_led7, led_on); // led_on
-			ledControl(green_led8, led_on); // led_on
-			ledControl(red_led, led_on); // led_on
-			osDelay(250);
-			ledControl(red_led, led_off); // led_off
-			osDelay(250);
-		}
-	}
-}
-void led_green_thread2 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led2, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led2, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(6000);
-		}
-	}
-}
-void led_green_thread3 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led3, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led3, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(5000);
-		}
-	}
-}
-void led_green_thread4 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led4, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led4, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(4000);
-		}
-	}
-}
-void led_green_thread5 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led5, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led5, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(3000);
-		}
-	}
-}
-void led_green_thread6 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led6, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led6, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(2000);
-		}
-	}
-}
-void led_green_thread7 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led7, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led7, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-			osDelay(1000);
-		}
-	}
-}
-void led_green_thread8 (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			osMutexAcquire(greenLedMutex, osWaitForever);
-			ledControl(green_led8, led_on); // led_on
-			osDelay(1000);
-			ledControl(green_led8, led_off); // led_off
-			osMutexRelease(greenLedMutex);
-		}
-	}
-} //*/
-void green_led_thread (void *argument) {
-	for (;;) {
-		//offGreenLEDs();
-		if (!stationary) {
-			ledControl(green_led1, led_on); // led_on
-			osDelay(500);
-			ledControl(green_led1, led_off); // led_off
-			ledControl(green_led2, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led2, led_off); // led_off
-			ledControl(green_led3, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led3, led_off); // led_off
-			ledControl(green_led4, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led4, led_off); // led_off
-			ledControl(green_led5, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led5, led_off); // led_off
-			ledControl(green_led6, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led6, led_off); // led_off
-			ledControl(green_led7, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led7, led_off); // led_off
-			ledControl(green_led8, led_on); // led_on
-			osDelay(500); 
-			ledControl(green_led8, led_off); // led_off
-		} else {
-			ledControl(green_led1, led_on); // led_on
-			ledControl(green_led2, led_on); // led_on
-			ledControl(green_led3, led_on); // led_on
-			ledControl(green_led4, led_on); // led_on
-			ledControl(green_led5, led_on); // led_on
-			ledControl(green_led6, led_on); // led_on
-			ledControl(green_led7, led_on); // led_on
-			ledControl(green_led8, led_on); // led_on
-		}
-	}
-}
+
 void led_red_thread (void *argument) {
   for (;;) {
 		if (!stationary) {
@@ -613,43 +446,73 @@ void led_red_thread (void *argument) {
 		}
 	}
 }
-///*
-const osThreadAttr_t thread_attr = {
-	.priority = osPriorityNormal7
-};
-
-const osThreadAttr_t greenLed1Priority = {
-	//.priority = osPriorityBelowNormal7
-	.priority = osPriorityNormal7
-};
-const osThreadAttr_t greenLed2Priority = {
-	//.priority = osPriorityBelowNormal6
-	.priority = osPriorityNormal6
-};
-const osThreadAttr_t greenLed3Priority = {
-	//.priority = osPriorityBelowNormal5
-	.priority = osPriorityNormal5
-};
-const osThreadAttr_t greenLed4Priority = {
-	//.priority = osPriorityBelowNormal4
-	.priority = osPriorityNormal4
-};
-const osThreadAttr_t greenLed5Priority = {
-	//.priority = osPriorityBelowNormal3
-	.priority = osPriorityNormal3
-};
-const osThreadAttr_t greenLed6Priority = {
-	//.priority = osPriorityBelowNormal2
-	.priority = osPriorityNormal2
-};
-const osThreadAttr_t greenLed7Priority = {
-	//.priority = osPriorityBelowNormal1
-	.priority = osPriorityNormal1
-};
-const osThreadAttr_t greenLed8Priority = {
-	//.priority = osPriorityBelowNormal
-	.priority = osPriorityNormal
-}; //*/
+void green_led_thread (void *argument) {
+	for (;;) {
+		//offGreenLEDs();
+		if (!stationary) {
+			ledControl(green_led1, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500);
+			
+			ledControl(green_led1, led_off); // led_off
+			ledControl(green_led2, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led2, led_off); // led_off
+			ledControl(green_led3, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led3, led_off); // led_off
+			ledControl(green_led4, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led4, led_off); // led_off
+			ledControl(green_led5, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led5, led_off); // led_off
+			ledControl(green_led6, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led6, led_off); // led_off
+			ledControl(green_led7, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			
+			ledControl(green_led7, led_off); // led_off
+			ledControl(green_led8, led_on); // led_on
+			if (stationary)
+				continue;
+			osDelay(500); 
+			ledControl(green_led8, led_off); // led_off
+		} else {
+			ledControl(green_led1, led_on); // led_on
+			ledControl(green_led2, led_on); // led_on
+			ledControl(green_led3, led_on); // led_on
+			ledControl(green_led4, led_on); // led_on
+			ledControl(green_led5, led_on); // led_on
+			ledControl(green_led6, led_on); // led_on
+			ledControl(green_led7, led_on); // led_on
+			ledControl(green_led8, led_on); // led_on
+			if (!stationary) {
+				offGreenLEDs();
+				continue;
+			}
+		}
+	}
+}
 const osThreadAttr_t motorPriority = {
 	.priority = osPriorityNormal7
 	//.priority = osPriorityHigh
@@ -673,8 +536,6 @@ int main (void) {
   // ...
 	
   osKernelInitialize();                 // Initialize CMSIS-RTOS
-	//myMutex = osMutexNew(NULL);
-	//greenLedMutex = osMutexNew(NULL);
 	
 	// Motor threads
 	osThreadNew(motor_thread, NULL, &motorPriority);
@@ -683,16 +544,6 @@ int main (void) {
 	// LED threads
 	osThreadNew(green_led_thread, NULL, &motorPriority);
 	osThreadNew(led_red_thread, NULL, &motorPriority);
-	/*
-	osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
-	osThreadNew(led_green_thread2, NULL, &greenLed2Priority);
-	osThreadNew(led_green_thread3, NULL, &greenLed3Priority);
-	osThreadNew(led_green_thread4, NULL, &greenLed4Priority);
-	osThreadNew(led_green_thread5, NULL, &greenLed5Priority);
-	osThreadNew(led_green_thread6, NULL, &greenLed6Priority);
-	osThreadNew(led_green_thread7, NULL, &greenLed7Priority);
-	osThreadNew(led_green_thread8, NULL, &greenLed8Priority);
-	*/
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
