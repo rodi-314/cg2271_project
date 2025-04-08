@@ -41,6 +41,8 @@ osMessageQueueId_t commandQueue;
 #define UART_RX_PORTE23 23
 #define UART2_INT_PRIO 128
 
+uint8_t command;
+
 // 8N1
 /* Init UART2 */
 void initUART2(uint32_t baud_rate)
@@ -50,6 +52,7 @@ void initUART2(uint32_t baud_rate)
     SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
     SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
 
+		// No need for transmit
     //PORTE->PCR[UART_TX_PORTE22] &= ~PORT_PCR_MUX_MASK;
     //PORTE->PCR[UART_TX_PORTE22] |= PORT_PCR_MUX(4);
 
@@ -67,22 +70,35 @@ void initUART2(uint32_t baud_rate)
     UART2->S2 = 0;
     UART2->C3 = 0;
 
-    UART2->C2 |= ((UART_C2_TE_MASK) | (UART_C2_RE_MASK));
+    UART2->C2 |= ((UART_C2_TE_MASK) | (UART_C2_RE_MASK) | (UART_C2_RIE_MASK));
+		
+		NVIC_SetPriority(UART2_IRQn, 2);
+		NVIC_ClearPendingIRQ(UART2_IRQn);
+		NVIC_EnableIRQ(UART2_IRQn);
 }
 
-/* UART2 Transmit Poll*/
+void UART2_IRQHandler() {
+	NVIC_ClearPendingIRQ(UART2_IRQn);
+	
+	if (UART2->S1 & UART_S1_RDRF_MASK) {
+		command = (UART2->D);
+	}	
+}
+
+/* UART2 Transmit Poll
 void UART2_Transmit_Poll(uint8_t data)
 {
     while (!(UART2->S1 & UART_S1_TDRE_MASK));
     UART2->D = data;
 }
+*/
 
-/* UART2 Receive Poll */
+/* UART2 Receive Poll 
 uint8_t UART2_Receive_Poll(void)
 {
     while (!(UART2->S1 & UART_S1_RDRF_MASK));
     return (UART2->D);
-}
+} */
 
 /*----------------------------------------------------------------------------
  * LED THINGS
@@ -115,6 +131,16 @@ void offRGB(void) {
 							MASK(GREEN_LED7) |
 							MASK(GREEN_LED8);
 	PTC->PCOR = MASK(RED_LED);
+}
+void offGreenLEDs(void) {
+	PTC->PCOR = MASK(GREEN_LED1) |
+							MASK(GREEN_LED2) |
+							MASK(GREEN_LED3) |
+							MASK(GREEN_LED4) |
+							MASK(GREEN_LED5) |
+							MASK(GREEN_LED6) |
+							MASK(GREEN_LED7) |
+							MASK(GREEN_LED8);
 }
 
 void ledControl(led_colors_t colour, led_switch_t switchOn) {
@@ -424,11 +450,16 @@ osMutexId_t greenLedMutex;
 
 void parseCommand(void *argument) {
 	for (;;) {
-		uint8_t command = UART2_Receive_Poll();
+		//uint8_t command = UART2_Receive_Poll();
 		myDataPkt dataPkt;
 		dataPkt.leftMotorStrength = (command & 0b00111000) >> 3;
 		dataPkt.rightMotorStrength = (command & 0b00000111);
 		dataPkt.isBackward = (command & 0b01000000) >> 6;
+		if (dataPkt.leftMotorStrength == 0 && dataPkt.rightMotorStrength == 0) {
+			stationary = true;
+		} else {
+			stationary = false;
+		}
 		dataPkt.playEndingMusic = (command & 0b10000000) >> 7;
 		
 		osMessageQueuePut(commandQueue, &dataPkt, NULL, 0);
@@ -462,17 +493,7 @@ void motor_thread(void *argument) {
 		}
 	}
 }
-
-void led_red_thread (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			ledControl(red_led, led_on); // led_on
-			osDelay(500);
-			ledControl(red_led, led_off); // led_off
-			osDelay(500);
-		}
-	}
-}
+/*
 void led_green_thread1 (void *argument) {
   for (;;) {
 		if (!stationary) {
@@ -580,8 +601,63 @@ void led_green_thread8 (void *argument) {
 			osMutexRelease(greenLedMutex);
 		}
 	}
+} //*/
+void green_led_thread (void *argument) {
+	for (;;) {
+		//offGreenLEDs();
+		if (!stationary) {
+			ledControl(green_led1, led_on); // led_on
+			osDelay(500);
+			ledControl(green_led1, led_off); // led_off
+			ledControl(green_led2, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led2, led_off); // led_off
+			ledControl(green_led3, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led3, led_off); // led_off
+			ledControl(green_led4, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led4, led_off); // led_off
+			ledControl(green_led5, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led5, led_off); // led_off
+			ledControl(green_led6, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led6, led_off); // led_off
+			ledControl(green_led7, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led7, led_off); // led_off
+			ledControl(green_led8, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led8, led_off); // led_off
+		} else {
+			ledControl(green_led1, led_on); // led_on
+			ledControl(green_led2, led_on); // led_on
+			ledControl(green_led3, led_on); // led_on
+			ledControl(green_led4, led_on); // led_on
+			ledControl(green_led5, led_on); // led_on
+			ledControl(green_led6, led_on); // led_on
+			ledControl(green_led7, led_on); // led_on
+			ledControl(green_led8, led_on); // led_on
+		}
+	}
 }
-
+void led_red_thread (void *argument) {
+  for (;;) {
+		if (!stationary) {
+			ledControl(red_led, led_on); // led_on
+			osDelay(500);
+			ledControl(red_led, led_off); // led_off
+			osDelay(500);
+		} else {
+			ledControl(red_led, led_on); // led_on
+			osDelay(250);
+			ledControl(red_led, led_off); // led_off
+			osDelay(250);
+		}
+	}
+}
+///*
 const osThreadAttr_t thread_attr = {
 	.priority = osPriorityNormal7
 };
@@ -617,10 +693,18 @@ const osThreadAttr_t greenLed7Priority = {
 const osThreadAttr_t greenLed8Priority = {
 	//.priority = osPriorityBelowNormal
 	.priority = osPriorityNormal
-};
+}; //*/
 const osThreadAttr_t motorPriority = {
-	.priority = osPriorityHigh
+	.priority = osPriorityNormal7
+	//.priority = osPriorityHigh
 };
+
+static void delay(volatile uint32_t nof) {
+  while(nof!=0) {
+    __asm("NOP");
+    nof--;
+  }
+}
 int main (void) {
  
   // System Initialization
@@ -641,21 +725,25 @@ int main (void) {
 	osThreadNew(parseCommand, NULL, &motorPriority);
 	
 	// LED threads
-	//osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
-	//osThreadNew(led_green_thread2, NULL, &greenLed2Priority);
-	//osThreadNew(led_green_thread3, NULL, &greenLed3Priority);
-	//osThreadNew(led_green_thread4, NULL, &greenLed4Priority);
-	//osThreadNew(led_green_thread5, NULL, &greenLed5Priority);
-	//osThreadNew(led_green_thread6, NULL, &greenLed6Priority);
-	//osThreadNew(led_green_thread7, NULL, &greenLed7Priority);
-	//osThreadNew(led_green_thread8, NULL, &greenLed8Priority);
-	//osThreadNew(led_red_thread, NULL, NULL);
-	
+	osThreadNew(green_led_thread, NULL, &motorPriority);
+	osThreadNew(led_red_thread, NULL, &motorPriority);
+	/*
+	osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
+	osThreadNew(led_green_thread2, NULL, &greenLed2Priority);
+	osThreadNew(led_green_thread3, NULL, &greenLed3Priority);
+	osThreadNew(led_green_thread4, NULL, &greenLed4Priority);
+	osThreadNew(led_green_thread5, NULL, &greenLed5Priority);
+	osThreadNew(led_green_thread6, NULL, &greenLed6Priority);
+	osThreadNew(led_green_thread7, NULL, &greenLed7Priority);
+	osThreadNew(led_green_thread8, NULL, &greenLed8Priority);
+	*/
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
 	//osThreadNew(play_finish, NULL, NULL);
   osKernelStart();                      // Start thread execution
 	
-  for (;;) {}
+  for (;;) {
+
+	}
 }
