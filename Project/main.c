@@ -19,7 +19,8 @@ bool stationary = false;
 #define GREEN_LED6	3 	// PortC Pin 3
 #define GREEN_LED7	0 	// PortC Pin 0
 #define GREEN_LED8	7 	// PortC Pin 7
-#define BACKWARDS 1 // PortB Pin 1 Backwards Motor, Ivory wire
+#define BACKWARDSL 0 // PortB Pin 1 Backwards Motor Right
+#define BACKWARDSR 1 // PortB Pin 0 Backwards Motor Left
 #define MASK(x) (1 << (x))
 
 /*----------------------------------------------------------------------------
@@ -29,9 +30,10 @@ bool stationary = false;
 typedef struct
 {
 	bool playEndingMusic;
-	bool isBackward;
-	uint8_t leftMotorStrength;
-	uint8_t rightMotorStrength;
+	bool backwardL;
+	bool backwardR;
+	int8_t leftMotorStrength;
+	int8_t rightMotorStrength;
 } myDataPkt;
 
 osMessageQueueId_t commandQueue;
@@ -239,8 +241,10 @@ void InitGPIO(void) {
 	PORTC->PCR[RED_LED] |= PORT_PCR_MUX(1);
 	
 	// Configure MUX settings to make motor backwards pin GPIO
-	PORTB->PCR[BACKWARDS] &= ~PORT_PCR_MUX_MASK;
-	PORTB->PCR[BACKWARDS] |= PORT_PCR_MUX(1);
+	PORTB->PCR[BACKWARDSL] &= ~PORT_PCR_MUX_MASK;
+	PORTB->PCR[BACKWARDSL] |= PORT_PCR_MUX(1);
+	PORTB->PCR[BACKWARDSR] &= ~PORT_PCR_MUX_MASK;
+	PORTB->PCR[BACKWARDSR] |= PORT_PCR_MUX(1);
 	
 	// Set Data Direction Registers for PortC
 	PTC->PDDR |= (MASK(GREEN_LED1) |
@@ -254,7 +258,8 @@ void InitGPIO(void) {
 								MASK(RED_LED));
 								
 	// Set Data Direction Registers for PortC
-	PTB->PDDR |= MASK(BACKWARDS);
+	PTB->PDDR |= MASK(BACKWARDSL);
+	PTB->PDDR |= MASK(BACKWARDSR);
 }
  
 #define PTB0_Pin 0 // Speaker 				(TPM1_CH0)
@@ -280,7 +285,7 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 7; // pg 554
+	TPM2->MOD = 3; // pg 554
 	TPM2_C0V = leftMotorSpeed;
 	TPM2_C1V = rightMotorSpeed;
 	
@@ -452,9 +457,10 @@ void parseCommand(void *argument) {
 	for (;;) {
 		//uint8_t command = UART2_Receive_Poll();
 		myDataPkt dataPkt;
-		dataPkt.leftMotorStrength = (command & 0b00111000) >> 3;
-		dataPkt.rightMotorStrength = (command & 0b00000111);
-		dataPkt.isBackward = (command & 0b01000000) >> 6;
+		dataPkt.leftMotorStrength = (command & 0b00011000) >> 3;
+		dataPkt.rightMotorStrength = (command & 0b00000011);
+		dataPkt.backwardL = (command & 0b00000100) >> 2;
+		dataPkt.backwardR = (command & 0b00100000) >> 5;
 		if (dataPkt.leftMotorStrength == 0 && dataPkt.rightMotorStrength == 0) {
 			stationary = true;
 		} else {
@@ -482,15 +488,23 @@ void motor_thread(void *argument) {
 			stationary = 0;
 		}
 		
-		if (rxData.isBackward) {
-			PTB->PSOR |= MASK(BACKWARDS);
-			TPM2_C0V = 8 - rxData.leftMotorStrength;
-			TPM2_C1V = 8 - rxData.rightMotorStrength;
+		if (!rxData.backwardL) {
+				PTB->PCOR |= MASK(BACKWARDSL);
+				TPM2_C0V = rxData.leftMotorStrength;
 		} else {
-			PTB->PCOR |= MASK(BACKWARDS);
-			TPM2_C0V = rxData.leftMotorStrength;
-			TPM2_C1V = rxData.rightMotorStrength;
+				PTB->PSOR |= MASK(BACKWARDSL);
+				TPM2_C0V = 3 - rxData.leftMotorStrength;
 		}
+		
+		
+		if (!rxData.backwardR) {
+				PTB->PCOR |= MASK(BACKWARDSR);
+				TPM2_C0V = rxData.rightMotorStrength;
+		} else {
+				PTB->PSOR |= MASK(BACKWARDSR);
+				TPM2_C0V = 3 - rxData.rightMotorStrength;
+		}
+			
 	}
 }
 /*
