@@ -389,52 +389,58 @@ void initPWM(uint16_t mod_value) {
 }
 #define MOD_music(x) (75000/x)
 
-int finish_run[] = {
+//Bach prelude
+int start_run[] = {
     C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4, C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4,
   	Ab4,F4,E4,F4, C4,F4,E4,F4, Ab4,F4,E4,F4, C4,F4,E4,F4, 
-	  B4,F4,Eb4,F4, D4,F4,Eb4,F4, B4,F4,Eb4,F4, D4,F4,Eb4,F4,
-	  C5,G4,F4,G4, Eb4,G4,F4,G4, C5,G4,F4,G4, Eb4,G4,F4,G4,
-	  Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4, Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4,
-	  D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4, D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4,
-	  D5,G4,Fs4,G4, D4,G4,Fs4,G4, D5,G4,Fs4,G4, D4,G4,Fs4,G4,
-	  C5,E4,D4,E4, C4,E4,D4,E4, C5,E4,D4,E4, C4,E4,D4,E4,
-	  C5,F4,E4,F4, C4,F4,E4,F4, C5,F4,E4,F4, C4,F4,E4,F4,
-		As4,G4,F4,G4, Eb4,G4,F4,G4, As4,G4,F4,G4, Eb4,G4,F4,G4,
-		Ab4,G4,F4,G4, Eb4,G4,F4,G4, Ab4,G4,F4,G4, Eb4,G4,F4,G4,
-		Ab4,D4,C4,D4, Bb3,D4,C4,D4, Ab4,D4,C4,D4, Bb3,D4,C4,D4,
-		G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3, G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3,
-		F4,C4,Bb3,C4, A3,C4,Bb3,C4, F4,C4,Bb3,C4, A3,C4,Bb3,C4,
-		F4,D4,C4,D4, B3,D4,C4,D4, F4,D4,C4,D4, B3,D4,C4,D4,
-		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4,
-		F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4, F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4,
-		Fs3,C4,B3,C4, Eb4,C4,B3,C4, Fs3,C4,B3,C4, Eb4,C4,B3,C4,
-		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4, 
-		Fs4,C4,B3,C4, A3,C4,B3,C4, Fs4,C4,B3,C4, A3,C4,B3,C4, 
-		G4,C4,B3,C4, D4,C4,B3,C4, G4,C4,B3,C4, D4,C4,B3,C4, 
-		Ab4,C4,B3,C4, D4,C4,B3,C4, Ab4,C4,B3,C4, D4,C4,B3,C4, 
+	B4,F4,Eb4,F4, D4,F4,Eb4,F4, B4,F4,Eb4,F4, D4,F4,Eb4,F4,
+	C5,G4,F4,G4, Eb4,G4,F4,G4, C5,G4,F4,G4, Eb4,G4,F4,G4,
+	Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4, Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4,
+	D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4, D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4,
+	D5,G4,Fs4,G4, D4,G4,Fs4,G4, D5,G4,Fs4,G4, D4,G4,Fs4,G4,
+	C5,E4,D4,E4, C4,E4,D4,E4, C5,E4,D4,E4, C4,E4,D4,E4,
+	C5,F4,E4,F4, C4,F4,E4,F4, C5,F4,E4,F4, C4,F4,E4,F4,
+	As4,G4,F4,G4, Eb4,G4,F4,G4, As4,G4,F4,G4, Eb4,G4,F4,G4,
+	Ab4,G4,F4,G4, Eb4,G4,F4,G4, Ab4,G4,F4,G4, Eb4,G4,F4,G4,
+	Ab4,D4,C4,D4, Bb3,D4,C4,D4, Ab4,D4,C4,D4, Bb3,D4,C4,D4,
+	G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3, G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3,
+	F4,C4,Bb3,C4, A3,C4,Bb3,C4, F4,C4,Bb3,C4, A3,C4,Bb3,C4,
+	F4,D4,C4,D4, B3,D4,C4,D4, F4,D4,C4,D4, B3,D4,C4,D4,
+	Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4,
+	F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4, F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4,
+	Fs3,C4,B3,C4, Eb4,C4,B3,C4, Fs3,C4,B3,C4, Eb4,C4,B3,C4,
+	Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4, 
+	Fs4,C4,B3,C4, A3,C4,B3,C4, Fs4,C4,B3,C4, A3,C4,B3,C4, 
+	G4,C4,B3,C4, D4,C4,B3,C4, G4,C4,B3,C4, D4,C4,B3,C4, 
+	Ab4,C4,B3,C4, D4,C4,B3,C4, Ab4,C4,B3,C4, D4,C4,B3,C4, 
 };
 
+//Washing machine song
+int finish_run[] = {
+	E4,E4,
+	A4,REST4,A4,REST4,Cs5,REST4,Cs5,REST4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,A4,Ab4,Fs4, E4,E4,E4,E4,E4,REST4,E4,E4,
+	A4,REST4,A4,REST4,Cs5,REST4,Cs5,REST4, A4,A4,A4,A4,E4,E4,A4,A4,
+	Ab4,Ab4,Fs4,Ab4,A4,A4,Eb4,Eb4, E4,E4,E4,E4,E4,REST4,E4,E4,
+	Ab4,REST4,Ab4,REST4,A4,Ab4,Fs4,Ab4, A4,A4,A4,A4,E4,E4,A4,A4,
+	Ab4,REST4,Ab4,REST4,Ab4,D5,B4,Ab4, A4,A4,A4,A4,A4,REST4,A4,A4,
+	Fs4,REST4,Fs4,REST4,Fs4,REST4,A4,REST4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,B4,Ab4,Ab4, A4,A4,A4,A4,A4,REST4,A4,A4,
+	Fs4,REST4,Fs4,REST4,Fs4,A4,Ab4,B4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,B4,Ab4,Ab4,A4,A4,A4,A4
+};
 
-
-
-
-//int finish_run[] = {
-	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, E4,E4,E4,E4, E4,REST4,D4,D4, D4,D4,D4,D4, D4,REST4,A4,A4,
-	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, B4,B4,B4,B4, B4,REST4,E4,E4
-//};
-
-void play_finish(void *argument){
+void play_start(void *argument){
 	osDelay(2000);
-    int notes_num = sizeof(finish_run)/ sizeof(finish_run[0]);
- int beats_per_min = 500;
-	//400
+    int notes_num = sizeof(start_run)/ sizeof(start_run[0]);
+ 	int beats_per_min = 400;
  
- int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
+ 	int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
  
 	for(;;) {
 		for(int i = 0; i < notes_num; i++) {
  
-			int curr_musical_note = finish_run[i] - 18;
+			int curr_musical_note = start_run[i] - 18;
   
 			int period = MOD_music(curr_musical_note);
   
@@ -443,7 +449,30 @@ void play_finish(void *argument){
   
 			osDelay(one_beat); //all equal in length
 		}
- }
+	}
+}
+
+
+void play_finish(void *argument){
+	osDelay(2000);
+    int notes_num = sizeof(finish_run)/ sizeof(finish_run[0]);
+ 	int beats_per_min = 400;
+ 
+ 	int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
+ 
+	
+	for(int i = 0; i < notes_num; i++) {
+
+		int curr_musical_note = finish_run[i] - 18;
+
+		int period = MOD_music(curr_musical_note);
+
+		TPM0->MOD = period;
+		TPM0_C3V = period / 6; 
+
+		osDelay(one_beat); //all equal in length
+	}
+	
 }
 
 /*----------------------------------------------------------------------------
@@ -754,7 +783,7 @@ int main (void) {
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
-	//osThreadNew(play_finish, NULL, NULL);
+	//osThreadNew(play_start, NULL, NULL);
   osKernelStart();                      // Start thread execution
 	
   for (;;) {
