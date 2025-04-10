@@ -75,13 +75,6 @@ void dumpGamepad(ControllerPtr ctl) {
     );
 }
 
-int32_t mod(int32_t integer) {
-    if (integer < 0) {
-      return -integer;
-    }
-    return integer;
-}
-
 int32_t limit(int32_t integer) {
     if (integer > 0) {
         return integer - 1;
@@ -114,10 +107,10 @@ void processGamepad(ControllerPtr ctl) {
     int32_t xShifted = limit(ctl->axisX() >> CTL_AXIS_BITSHIFT);
     int32_t yShifted = -limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
 
-    int32_t xMod = mod(xShifted);
-    int32_t yMod = mod(yShifted);
-    Serial.printf("x: %4d\n", xShifted);
-    Serial.printf("y: %4d\n", yShifted);
+    int32_t xMod = abs(xShifted);
+    int32_t yMod = abs(yShifted);
+    //Serial.printf("x: %4d\n", xShifted);
+    //Serial.printf("y: %4d\n", yShifted);
     
     if (xMod > SPEED_THRESHOLD || yMod > SPEED_THRESHOLD) {
         int32_t max = xMod;
@@ -160,8 +153,8 @@ void processGamepad(ControllerPtr ctl) {
       Serial.printf("Right: %d\n",rightSpeed);
     }
 */
-    int32_t leftSpeed = yShifted - xShifted;
-    int32_t rightSpeed = yShifted + xShifted;
+    int32_t leftSpeed = yShifted + xShifted;
+    int32_t rightSpeed = yShifted - xShifted;
     if (leftSpeed<0) {
       leftSpeed = max(-7, leftSpeed);
     } else {
@@ -173,32 +166,46 @@ void processGamepad(ControllerPtr ctl) {
       rightSpeed = min(7, rightSpeed);
     }
 
-    leftSpeed >>= 1;
-    rightSpeed >>= 1;
+    leftSpeed /= 2;
+    rightSpeed /= 2;
     
     // Set turbo mode if 'A' button is pressed on the Nintendo Switch Controller
     movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
                   ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3) | (ctl->b() << 6);
                   
-    Serial.printf("Left: %d\n",leftSpeed);
-    Serial.printf("Right: %d\n",rightSpeed);
-    // Move robot when dpad is pressed
-    switch (ctl->dpad()) {
-      // Up button pressed
-      case 0x01:
-        break;
+    // Serial.printf("Left: %d\n",leftSpeed);
+    // Serial.printf("Right: %d\n",rightSpeed);
 
-      // Down
-      case 0x02:
-        break;
+    // Joystick is not pressed
+    if (!xMod && !yMod) {
+      // Move robot when dpad is pressed
+      switch (ctl->dpad()) {
+        
+        // Dpad is not pressed
+        case 0x00:
+          movePacket = 0x00;
+          break;
 
-      // Right
-      case 0x04:
-        break;
+        // Up button pressed
+        case 0x01:
+          movePacket = 0x1B;
+          break;
 
-      // Left
-      case 0x08:
-        break;
+        // Down
+        case 0x02:
+          movePacket = 0x3F;
+          break;
+
+        // Right
+        case 0x04:
+          movePacket = 0x1F;
+          break;
+
+        // Left
+        case 0x08:
+          movePacket = 0x3B;
+          break;
+      }
     }
 
     if (ctl->a()) {
@@ -248,7 +255,7 @@ void processGamepad(ControllerPtr ctl) {
     // See how the different "dump*" functions dump the Controller info.-
     // dumpGamepad(ctl);
 
-    Serial.println(movePacket);
+    // Serial.println(movePacket);
     Serial2.write(movePacket);
 }
 
