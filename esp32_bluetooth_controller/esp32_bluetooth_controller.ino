@@ -112,7 +112,7 @@ void processGamepad(ControllerPtr ctl) {
 
     // Move robot when joystick is moved
     int32_t xShifted = limit(ctl->axisX() >> CTL_AXIS_BITSHIFT);
-    int32_t yShifted = limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
+    int32_t yShifted = -limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
 
     int32_t xMod = mod(xShifted);
     int32_t yMod = mod(yShifted);
@@ -130,7 +130,7 @@ void processGamepad(ControllerPtr ctl) {
     // Send UART command to move robot
     // Stationary by default
     int8_t movePacket = 0x00;
-
+/*
     // Move forward by default if x is above the speed_threshold
     if (xMod > SPEED_THRESHOLD) {
       movePacket = (movePacket & ~SPEED_MASK) + (xMod << LEFT_SPEED_BITSHIFT) + xMod;
@@ -145,18 +145,41 @@ void processGamepad(ControllerPtr ctl) {
     if (yShifted > SPEED_THRESHOLD) {
       movePacket = ((movePacket | DIRECTION_MASK) &~ SPEED_MASK) + (yMod << LEFT_SPEED_BITSHIFT) + yMod;
     }
+    Serial.println(movePacket);
 
     // Move left
     if (xShifted < -SPEED_THRESHOLD) {
       int32_t leftSpeed = (movePacket & LEFT_SPEED_MASK) >> LEFT_SPEED_BITSHIFT;
       movePacket = (movePacket & ~LEFT_SPEED_MASK) + (positive(leftSpeed - (xMod >> 1)) << LEFT_SPEED_BITSHIFT);
+      Serial.printf("Left: %d\n",leftSpeed);
 
     // Move right
     } else if (xShifted > SPEED_THRESHOLD) {
       int32_t rightSpeed = (movePacket & RIGHT_SPEED_MASK);
       movePacket = (movePacket & ~RIGHT_SPEED_MASK) + positive(rightSpeed - (xMod >> 1));
+      Serial.printf("Right: %d\n",rightSpeed);
+    }
+*/
+    int32_t leftSpeed = yShifted-xShifted;
+    int32_t rightSpeed = yShifted+xShifted;
+    if (leftSpeed<0) {
+      leftSpeed = max(-7, leftSpeed);
+    } else {
+      leftSpeed = min(7, leftSpeed);
+    }
+    if (rightSpeed<0) {
+      rightSpeed = max(-7, rightSpeed);
+    } else {
+      rightSpeed = min(7, rightSpeed);
     }
 
+    leftSpeed/=2;
+    rightSpeed/=2;
+    
+    movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
+                  ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3);    
+    Serial.printf("Left: %d\n",leftSpeed);
+    Serial.printf("Right: %d\n",rightSpeed);
     // Move robot when dpad is pressed
     switch (ctl->dpad()) {
       // Up button pressed

@@ -19,7 +19,8 @@ bool stationary = false;
 #define GREEN_LED6	3 	// PortC Pin 3
 #define GREEN_LED7	0 	// PortC Pin 0
 #define GREEN_LED8	7 	// PortC Pin 7
-#define BACKWARDS 1 // PortB Pin 1 Backwards Motor, Ivory wire
+#define BACKWARDSL 0 // PortB Pin 1 Backwards Motor Right
+#define BACKWARDSR 1 // PortB Pin 0 Backwards Motor Left
 #define MASK(x) (1 << (x))
 
 /*----------------------------------------------------------------------------
@@ -29,9 +30,10 @@ bool stationary = false;
 typedef struct
 {
 	bool playEndingMusic;
-	bool isBackward;
-	uint8_t leftMotorStrength;
-	uint8_t rightMotorStrength;
+	bool backwardL;
+	bool backwardR;
+	int8_t leftMotorStrength;
+	int8_t rightMotorStrength;
 } myDataPkt;
 
 osMessageQueueId_t commandQueue;
@@ -40,6 +42,8 @@ osMessageQueueId_t commandQueue;
 #define UART_TX_PORTE22 22
 #define UART_RX_PORTE23 23
 #define UART2_INT_PRIO 128
+
+uint8_t command;
 
 // 8N1
 /* Init UART2 */
@@ -50,6 +54,7 @@ void initUART2(uint32_t baud_rate)
     SIM->SCGC4 |= SIM_SCGC4_UART2_MASK;
     SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
 
+		// No need for transmit
     //PORTE->PCR[UART_TX_PORTE22] &= ~PORT_PCR_MUX_MASK;
     //PORTE->PCR[UART_TX_PORTE22] |= PORT_PCR_MUX(4);
 
@@ -67,22 +72,35 @@ void initUART2(uint32_t baud_rate)
     UART2->S2 = 0;
     UART2->C3 = 0;
 
-    UART2->C2 |= ((UART_C2_TE_MASK) | (UART_C2_RE_MASK));
+    UART2->C2 |= ((UART_C2_TE_MASK) | (UART_C2_RE_MASK) | (UART_C2_RIE_MASK));
+		
+		NVIC_SetPriority(UART2_IRQn, 2);
+		NVIC_ClearPendingIRQ(UART2_IRQn);
+		NVIC_EnableIRQ(UART2_IRQn);
 }
 
-/* UART2 Transmit Poll*/
+void UART2_IRQHandler() {
+	NVIC_ClearPendingIRQ(UART2_IRQn);
+	
+	if (UART2->S1 & UART_S1_RDRF_MASK) {
+		command = (UART2->D);
+	}	
+}
+
+/* UART2 Transmit Poll
 void UART2_Transmit_Poll(uint8_t data)
 {
     while (!(UART2->S1 & UART_S1_TDRE_MASK));
     UART2->D = data;
 }
+*/
 
-/* UART2 Receive Poll */
+/* UART2 Receive Poll 
 uint8_t UART2_Receive_Poll(void)
 {
     while (!(UART2->S1 & UART_S1_RDRF_MASK));
     return (UART2->D);
-}
+} */
 
 /*----------------------------------------------------------------------------
  * LED THINGS
@@ -115,6 +133,16 @@ void offRGB(void) {
 							MASK(GREEN_LED7) |
 							MASK(GREEN_LED8);
 	PTC->PCOR = MASK(RED_LED);
+}
+void offGreenLEDs(void) {
+	PTC->PCOR = MASK(GREEN_LED1) |
+							MASK(GREEN_LED2) |
+							MASK(GREEN_LED3) |
+							MASK(GREEN_LED4) |
+							MASK(GREEN_LED5) |
+							MASK(GREEN_LED6) |
+							MASK(GREEN_LED7) |
+							MASK(GREEN_LED8);
 }
 
 void ledControl(led_colors_t colour, led_switch_t switchOn) {
@@ -213,8 +241,10 @@ void InitGPIO(void) {
 	PORTC->PCR[RED_LED] |= PORT_PCR_MUX(1);
 	
 	// Configure MUX settings to make motor backwards pin GPIO
-	PORTB->PCR[BACKWARDS] &= ~PORT_PCR_MUX_MASK;
-	PORTB->PCR[BACKWARDS] |= PORT_PCR_MUX(1);
+	PORTB->PCR[BACKWARDSL] &= ~PORT_PCR_MUX_MASK;
+	PORTB->PCR[BACKWARDSL] |= PORT_PCR_MUX(1);
+	PORTB->PCR[BACKWARDSR] &= ~PORT_PCR_MUX_MASK;
+	PORTB->PCR[BACKWARDSR] |= PORT_PCR_MUX(1);
 	
 	// Set Data Direction Registers for PortC
 	PTC->PDDR |= (MASK(GREEN_LED1) |
@@ -228,7 +258,8 @@ void InitGPIO(void) {
 								MASK(RED_LED));
 								
 	// Set Data Direction Registers for PortC
-	PTB->PDDR |= MASK(BACKWARDS);
+	PTB->PDDR |= MASK(BACKWARDSL);
+	PTB->PDDR |= MASK(BACKWARDSR);
 }
  
 #define PTB0_Pin 0 // Speaker 				(TPM1_CH0)
@@ -254,7 +285,7 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 7; // pg 554
+	TPM2->MOD = 3; // pg 554
 	TPM2_C0V = leftMotorSpeed;
 	TPM2_C1V = rightMotorSpeed;
 	
@@ -302,17 +333,34 @@ void initPWM(uint16_t mod_value) {
 #define MOD(x) (37500/x)
 
 #define PTC4_Pin 4 //TPM0_CH3
-#define NOTE_C4  261
-#define NOTE_D4  294
-#define NOTE_E4  330
-#define NOTE_F4  349
-#define NOTE_G4  392
-#define NOTE_A4  440
-#define NOTE_As4  467
-#define NOTE_B4  494
-#define NOTE_C5  523
-#define NOTE_D5  550
-#define REST 0
+
+#define C3  130
+#define G3  196
+#define F3  175
+#define Eb3 156
+
+#define Fs3 185
+#define Ab3 208
+#define A3  220
+#define Bb3 233
+#define B3  247
+
+#define C4  261
+#define D4  294
+#define Eb4 311
+#define E4  330
+#define F4  349
+#define Fs4 370
+#define G4  392
+#define Ab4 415
+#define A4  440
+#define As4 467
+#define B4  494
+#define C5  523
+#define Cs5 554
+#define D5  550
+#define Eb5 622
+#define REST4 0
 
 void initPWM(uint16_t mod_value) {
  
@@ -342,32 +390,59 @@ void initPWM(uint16_t mod_value) {
 #define MOD_music(x) (75000/x)
 
 int finish_run[] = {
-    NOTE_C4, NOTE_D4, NOTE_F4, NOTE_C5, NOTE_A4, REST, NOTE_C5, NOTE_A4, NOTE_F4, NOTE_A4, NOTE_G4
-		, REST, NOTE_C5, NOTE_A4, NOTE_F4, NOTE_A4, NOTE_G4
-		, REST, NOTE_A4, NOTE_D4, NOTE_F4, NOTE_G4, NOTE_F4
-		, REST, NOTE_A4, NOTE_As4, NOTE_C5, NOTE_C5, NOTE_A4, NOTE_C5, NOTE_C5
-		, NOTE_C5, NOTE_A4, NOTE_C5, NOTE_D5, NOTE_C5, NOTE_C5
-		, NOTE_C5, NOTE_A4, NOTE_G4, NOTE_F4, NOTE_C4, NOTE_F4, NOTE_F4
-		, REST, NOTE_E4, NOTE_E4, NOTE_D4, NOTE_E4, NOTE_D4, NOTE_C4
+    C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4, C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4,
+  	Ab4,F4,E4,F4, C4,F4,E4,F4, Ab4,F4,E4,F4, C4,F4,E4,F4, 
+	  B4,F4,Eb4,F4, D4,F4,Eb4,F4, B4,F4,Eb4,F4, D4,F4,Eb4,F4,
+	  C5,G4,F4,G4, Eb4,G4,F4,G4, C5,G4,F4,G4, Eb4,G4,F4,G4,
+	  Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4, Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4,
+	  D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4, D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4,
+	  D5,G4,Fs4,G4, D4,G4,Fs4,G4, D5,G4,Fs4,G4, D4,G4,Fs4,G4,
+	  C5,E4,D4,E4, C4,E4,D4,E4, C5,E4,D4,E4, C4,E4,D4,E4,
+	  C5,F4,E4,F4, C4,F4,E4,F4, C5,F4,E4,F4, C4,F4,E4,F4,
+		As4,G4,F4,G4, Eb4,G4,F4,G4, As4,G4,F4,G4, Eb4,G4,F4,G4,
+		Ab4,G4,F4,G4, Eb4,G4,F4,G4, Ab4,G4,F4,G4, Eb4,G4,F4,G4,
+		Ab4,D4,C4,D4, Bb3,D4,C4,D4, Ab4,D4,C4,D4, Bb3,D4,C4,D4,
+		G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3, G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3,
+		F4,C4,Bb3,C4, A3,C4,Bb3,C4, F4,C4,Bb3,C4, A3,C4,Bb3,C4,
+		F4,D4,C4,D4, B3,D4,C4,D4, F4,D4,C4,D4, B3,D4,C4,D4,
+		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4,
+		F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4, F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4,
+		Fs3,C4,B3,C4, Eb4,C4,B3,C4, Fs3,C4,B3,C4, Eb4,C4,B3,C4,
+		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4, 
+		Fs4,C4,B3,C4, A3,C4,B3,C4, Fs4,C4,B3,C4, A3,C4,B3,C4, 
+		G4,C4,B3,C4, D4,C4,B3,C4, G4,C4,B3,C4, D4,C4,B3,C4, 
+		Ab4,C4,B3,C4, D4,C4,B3,C4, Ab4,C4,B3,C4, D4,C4,B3,C4, 
 };
+
+
+
+
+
+//int finish_run[] = {
+	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, E4,E4,E4,E4, E4,REST4,D4,D4, D4,D4,D4,D4, D4,REST4,A4,A4,
+	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, B4,B4,B4,B4, B4,REST4,E4,E4
+//};
 
 void play_finish(void *argument){
 	osDelay(2000);
     int notes_num = sizeof(finish_run)/ sizeof(finish_run[0]);
- int beats_per_min = 120;
+ int beats_per_min = 500;
+	//400
  
- int one_beat = 60000 / beats_per_min; //60000 ms = 60 seconds
+ int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
  
- for(int i = 0; i < notes_num; i++)
- {
-  int curr_musical_note = finish_run[i];
+	for(;;) {
+		for(int i = 0; i < notes_num; i++) {
+ 
+			int curr_musical_note = finish_run[i] - 18;
   
-  int period = MOD_music(curr_musical_note);
+			int period = MOD_music(curr_musical_note);
   
-  TPM0->MOD = period;
-  TPM0_C3V = period / 6; 
+			TPM0->MOD = period;
+			TPM0_C3V = period / 6; 
   
-  osDelay(one_beat); //all equal in length
+			osDelay(one_beat); //all equal in length
+		}
  }
 }
 
@@ -380,11 +455,17 @@ osMutexId_t greenLedMutex;
 
 void parseCommand(void *argument) {
 	for (;;) {
-		uint8_t command = UART2_Receive_Poll();
+		//uint8_t command = UART2_Receive_Poll();
 		myDataPkt dataPkt;
-		dataPkt.leftMotorStrength = (command & 0b00111000) >> 3;
-		dataPkt.rightMotorStrength = (command & 0b00000111);
-		dataPkt.isBackward = (command & 0b01000000) >> 6;
+		dataPkt.leftMotorStrength = (command & 0b00011000) >> 3;
+		dataPkt.rightMotorStrength = (command & 0b00000011);
+		dataPkt.backwardL = (command & 0b00000100) >> 2;
+		dataPkt.backwardR = (command & 0b00100000) >> 5;
+		if (dataPkt.leftMotorStrength == 0 && dataPkt.rightMotorStrength == 0) {
+			stationary = true;
+		} else {
+			stationary = false;
+		}
 		dataPkt.playEndingMusic = (command & 0b10000000) >> 7;
 		
 		osMessageQueuePut(commandQueue, &dataPkt, NULL, 0);
@@ -407,28 +488,26 @@ void motor_thread(void *argument) {
 			stationary = 0;
 		}
 		
-		if (rxData.isBackward) {
-			PTB->PSOR |= MASK(BACKWARDS);
-			TPM2_C0V = 8 - rxData.leftMotorStrength;
-			TPM2_C1V = 8 - rxData.rightMotorStrength;
+		if (!rxData.backwardL) {
+				PTB->PCOR |= MASK(BACKWARDSL);
+				TPM2_C0V = rxData.leftMotorStrength;
 		} else {
-			PTB->PCOR |= MASK(BACKWARDS);
-			TPM2_C0V = rxData.leftMotorStrength;
-			TPM2_C1V = rxData.rightMotorStrength;
+				PTB->PSOR |= MASK(BACKWARDSL);
+				TPM2_C0V = 3 - rxData.leftMotorStrength;
 		}
+		
+		
+		if (!rxData.backwardR) {
+				PTB->PCOR |= MASK(BACKWARDSR);
+				TPM2_C1V = rxData.rightMotorStrength;
+		} else {
+				PTB->PSOR |= MASK(BACKWARDSR);
+				TPM2_C1V = 3 - rxData.rightMotorStrength;
+		}
+			
 	}
 }
-
-void led_red_thread (void *argument) {
-  for (;;) {
-		if (!stationary) {
-			ledControl(red_led, led_on); // led_on
-			osDelay(500);
-			ledControl(red_led, led_off); // led_off
-			osDelay(500);
-		}
-	}
-}
+/*
 void led_green_thread1 (void *argument) {
   for (;;) {
 		if (!stationary) {
@@ -536,8 +615,63 @@ void led_green_thread8 (void *argument) {
 			osMutexRelease(greenLedMutex);
 		}
 	}
+} //*/
+void green_led_thread (void *argument) {
+	for (;;) {
+		//offGreenLEDs();
+		if (!stationary) {
+			ledControl(green_led1, led_on); // led_on
+			osDelay(500);
+			ledControl(green_led1, led_off); // led_off
+			ledControl(green_led2, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led2, led_off); // led_off
+			ledControl(green_led3, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led3, led_off); // led_off
+			ledControl(green_led4, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led4, led_off); // led_off
+			ledControl(green_led5, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led5, led_off); // led_off
+			ledControl(green_led6, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led6, led_off); // led_off
+			ledControl(green_led7, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led7, led_off); // led_off
+			ledControl(green_led8, led_on); // led_on
+			osDelay(500); 
+			ledControl(green_led8, led_off); // led_off
+		} else {
+			ledControl(green_led1, led_on); // led_on
+			ledControl(green_led2, led_on); // led_on
+			ledControl(green_led3, led_on); // led_on
+			ledControl(green_led4, led_on); // led_on
+			ledControl(green_led5, led_on); // led_on
+			ledControl(green_led6, led_on); // led_on
+			ledControl(green_led7, led_on); // led_on
+			ledControl(green_led8, led_on); // led_on
+		}
+	}
 }
-
+void led_red_thread (void *argument) {
+  for (;;) {
+		if (!stationary) {
+			ledControl(red_led, led_on); // led_on
+			osDelay(500);
+			ledControl(red_led, led_off); // led_off
+			osDelay(500);
+		} else {
+			ledControl(red_led, led_on); // led_on
+			osDelay(250);
+			ledControl(red_led, led_off); // led_off
+			osDelay(250);
+		}
+	}
+}
+///*
 const osThreadAttr_t thread_attr = {
 	.priority = osPriorityNormal7
 };
@@ -573,10 +707,18 @@ const osThreadAttr_t greenLed7Priority = {
 const osThreadAttr_t greenLed8Priority = {
 	//.priority = osPriorityBelowNormal
 	.priority = osPriorityNormal
-};
+}; //*/
 const osThreadAttr_t motorPriority = {
-	.priority = osPriorityHigh
+	.priority = osPriorityNormal7
+	//.priority = osPriorityHigh
 };
+
+static void delay(volatile uint32_t nof) {
+  while(nof!=0) {
+    __asm("NOP");
+    nof--;
+  }
+}
 int main (void) {
  
   // System Initialization
@@ -597,21 +739,25 @@ int main (void) {
 	osThreadNew(parseCommand, NULL, &motorPriority);
 	
 	// LED threads
-	//osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
-	//osThreadNew(led_green_thread2, NULL, &greenLed2Priority);
-	//osThreadNew(led_green_thread3, NULL, &greenLed3Priority);
-	//osThreadNew(led_green_thread4, NULL, &greenLed4Priority);
-	//osThreadNew(led_green_thread5, NULL, &greenLed5Priority);
-	//osThreadNew(led_green_thread6, NULL, &greenLed6Priority);
-	//osThreadNew(led_green_thread7, NULL, &greenLed7Priority);
-	//osThreadNew(led_green_thread8, NULL, &greenLed8Priority);
-	//osThreadNew(led_red_thread, NULL, NULL);
-	
+	osThreadNew(green_led_thread, NULL, &motorPriority);
+	osThreadNew(led_red_thread, NULL, &motorPriority);
+	/*
+	osThreadNew(led_green_thread1, NULL, &greenLed1Priority);
+	osThreadNew(led_green_thread2, NULL, &greenLed2Priority);
+	osThreadNew(led_green_thread3, NULL, &greenLed3Priority);
+	osThreadNew(led_green_thread4, NULL, &greenLed4Priority);
+	osThreadNew(led_green_thread5, NULL, &greenLed5Priority);
+	osThreadNew(led_green_thread6, NULL, &greenLed6Priority);
+	osThreadNew(led_green_thread7, NULL, &greenLed7Priority);
+	osThreadNew(led_green_thread8, NULL, &greenLed8Priority);
+	*/
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
 	//osThreadNew(play_finish, NULL, NULL);
   osKernelStart();                      // Start thread execution
 	
-  for (;;) {}
+  for (;;) {
+
+	}
 }
