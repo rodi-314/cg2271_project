@@ -160,8 +160,8 @@ void processGamepad(ControllerPtr ctl) {
       Serial.printf("Right: %d\n",rightSpeed);
     }
 */
-    int32_t leftSpeed = yShifted-xShifted;
-    int32_t rightSpeed = yShifted+xShifted;
+    int32_t leftSpeed = yShifted - xShifted;
+    int32_t rightSpeed = yShifted + xShifted;
     if (leftSpeed<0) {
       leftSpeed = max(-7, leftSpeed);
     } else {
@@ -173,11 +173,13 @@ void processGamepad(ControllerPtr ctl) {
       rightSpeed = min(7, rightSpeed);
     }
 
-    leftSpeed/=2;
-    rightSpeed/=2;
+    leftSpeed >>= 1;
+    rightSpeed >>= 1;
     
+    // Set turbo mode if 'A' button is pressed on the Nintendo Switch Controller
     movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
-                  ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3);    
+                  ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3) | (ctl->b() << 6);
+                  
     Serial.printf("Left: %d\n",leftSpeed);
     Serial.printf("Right: %d\n",rightSpeed);
     // Move robot when dpad is pressed
@@ -220,8 +222,8 @@ void processGamepad(ControllerPtr ctl) {
         // colorIdx++;
     }
 
-    // Play music when'A' button pressed on Nintendo Switch Controller
-    if (ctl->b()) {
+    // Play music when 'B' button pressed on Nintendo Switch Controller
+    if (ctl->a()) {
       movePacket = 0x80;
         // // Turn on the 4 LED. Each bit represents one LED.
         // static int led = 0;
@@ -244,7 +246,7 @@ void processGamepad(ControllerPtr ctl) {
 
     // Another way to query controller data is by getting the buttons() function.
     // See how the different "dump*" functions dump the Controller info.-
-    dumpGamepad(ctl);
+    // dumpGamepad(ctl);
 
     Serial.println(movePacket);
     Serial2.write(movePacket);
