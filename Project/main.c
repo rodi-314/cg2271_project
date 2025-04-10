@@ -32,10 +32,13 @@ typedef struct
 	bool playEndingMusic;
 	bool backwardL;
 	bool backwardR;
+	bool isTurbo;
+	//int8_t isTurbo;
 	int8_t leftMotorStrength;
 	int8_t rightMotorStrength;
 } myDataPkt;
 
+myDataPkt dataPkt;
 osMessageQueueId_t commandQueue;
 
 #define BAUD_RATE 9600
@@ -266,9 +269,10 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 7; // pg 554
-	TPM2_C0V = leftMotorSpeed;
-	TPM2_C1V = rightMotorSpeed;
+	TPM2->MOD = 15; // pg 554
+	//TPM2->MOD = 7; // pg 554
+	//TPM2_C0V = leftMotorSpeed;
+	//TPM2_C1V = rightMotorSpeed;
 	
 	// TPM status control
 	TPM2->SC &= ~((TPM_SC_CMOD_MASK) | (TPM_SC_PS_MASK));
@@ -341,7 +345,7 @@ void initPWM(uint16_t mod_value) {
 #define Cs5 554
 #define D5  550
 #define Eb5 622
-#define REST4 0
+#define REST4 100000
 
 void initPWM(uint16_t mod_value) {
  
@@ -370,61 +374,124 @@ void initPWM(uint16_t mod_value) {
 }
 #define MOD_music(x) (75000/x)
 
-int finish_run[] = {
+//Bach prelude
+int start_run[] = {
     C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4, C5,Eb4,D4,Eb4, C4,Eb4,D4,Eb4,
   	Ab4,F4,E4,F4, C4,F4,E4,F4, Ab4,F4,E4,F4, C4,F4,E4,F4, 
-	  B4,F4,Eb4,F4, D4,F4,Eb4,F4, B4,F4,Eb4,F4, D4,F4,Eb4,F4,
-	  C5,G4,F4,G4, Eb4,G4,F4,G4, C5,G4,F4,G4, Eb4,G4,F4,G4,
-	  Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4, Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4,
-	  D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4, D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4,
-	  D5,G4,Fs4,G4, D4,G4,Fs4,G4, D5,G4,Fs4,G4, D4,G4,Fs4,G4,
-	  C5,E4,D4,E4, C4,E4,D4,E4, C5,E4,D4,E4, C4,E4,D4,E4,
-	  C5,F4,E4,F4, C4,F4,E4,F4, C5,F4,E4,F4, C4,F4,E4,F4,
-		As4,G4,F4,G4, Eb4,G4,F4,G4, As4,G4,F4,G4, Eb4,G4,F4,G4,
-		Ab4,G4,F4,G4, Eb4,G4,F4,G4, Ab4,G4,F4,G4, Eb4,G4,F4,G4,
-		Ab4,D4,C4,D4, Bb3,D4,C4,D4, Ab4,D4,C4,D4, Bb3,D4,C4,D4,
-		G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3, G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3,
-		F4,C4,Bb3,C4, A3,C4,Bb3,C4, F4,C4,Bb3,C4, A3,C4,Bb3,C4,
-		F4,D4,C4,D4, B3,D4,C4,D4, F4,D4,C4,D4, B3,D4,C4,D4,
-		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4,
-		F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4, F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4,
-		Fs3,C4,B3,C4, Eb4,C4,B3,C4, Fs3,C4,B3,C4, Eb4,C4,B3,C4,
-		Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4, 
-		Fs4,C4,B3,C4, A3,C4,B3,C4, Fs4,C4,B3,C4, A3,C4,B3,C4, 
-		G4,C4,B3,C4, D4,C4,B3,C4, G4,C4,B3,C4, D4,C4,B3,C4, 
-		Ab4,C4,B3,C4, D4,C4,B3,C4, Ab4,C4,B3,C4, D4,C4,B3,C4, 
+	B4,F4,Eb4,F4, D4,F4,Eb4,F4, B4,F4,Eb4,F4, D4,F4,Eb4,F4,
+	C5,G4,F4,G4, Eb4,G4,F4,G4, C5,G4,F4,G4, Eb4,G4,F4,G4,
+	Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4, Eb5,Ab4,G4,Ab4, Eb4,Ab4,G4,Ab4,
+	D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4, D5,Fs4,E4,Fs4, D4,Fs4,E4,Fs4,
+	D5,G4,Fs4,G4, D4,G4,Fs4,G4, D5,G4,Fs4,G4, D4,G4,Fs4,G4,
+	C5,E4,D4,E4, C4,E4,D4,E4, C5,E4,D4,E4, C4,E4,D4,E4,
+	C5,F4,E4,F4, C4,F4,E4,F4, C5,F4,E4,F4, C4,F4,E4,F4,
+	As4,G4,F4,G4, Eb4,G4,F4,G4, As4,G4,F4,G4, Eb4,G4,F4,G4,
+	Ab4,G4,F4,G4, Eb4,G4,F4,G4, Ab4,G4,F4,G4, Eb4,G4,F4,G4,
+	Ab4,D4,C4,D4, Bb3,D4,C4,D4, Ab4,D4,C4,D4, Bb3,D4,C4,D4,
+	G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3, G4,Bb3,Ab3,Bb3, Eb4,Bb3,Ab3,Bb3,
+	F4,C4,Bb3,C4, A3,C4,Bb3,C4, F4,C4,Bb3,C4, A3,C4,Bb3,C4,
+	F4,D4,C4,D4, B3,D4,C4,D4, F4,D4,C4,D4, B3,D4,C4,D4,
+	Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4,
+	F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4, F3,Eb4,D4,Eb4, F4,Eb4,D4,Eb4,
+	Fs3,C4,B3,C4, Eb4,C4,B3,C4, Fs3,C4,B3,C4, Eb4,C4,B3,C4,
+	Eb4,C4,B3,C4, G3,C4,B3,C4, Eb4,C4,B3,C4, G3,C4,B3,C4, 
+	Fs4,C4,B3,C4, A3,C4,B3,C4, Fs4,C4,B3,C4, A3,C4,B3,C4, 
+	G4,C4,B3,C4, D4,C4,B3,C4, G4,C4,B3,C4, D4,C4,B3,C4, 
+	Ab4,C4,B3,C4, D4,C4,B3,C4, Ab4,C4,B3,C4, D4,C4,B3,C4, 
 };
 
+//Washing machine song
+int finish_run[] = {
+	E4,E4,
+	A4,REST4,A4,REST4,Cs5,REST4,Cs5,REST4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,A4,Ab4,Fs4, E4,E4,E4,E4,E4,REST4,E4,E4,
+	A4,REST4,A4,REST4,Cs5,REST4,Cs5,REST4, A4,A4,A4,A4,E4,E4,A4,A4,
+	Ab4,Ab4,Fs4,Ab4,A4,A4,Eb4,Eb4, E4,E4,E4,E4,E4,REST4,E4,E4,
+	Ab4,REST4,Ab4,REST4,A4,Ab4,Fs4,Ab4, A4,A4,A4,A4,E4,E4,A4,A4,
+	Ab4,REST4,Ab4,REST4,Ab4,D5,B4,Ab4, A4,A4,A4,A4,A4,REST4,A4,A4,
+	Fs4,REST4,Fs4,REST4,Fs4,REST4,A4,REST4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,B4,Ab4,Ab4, A4,A4,A4,A4,A4,REST4,A4,A4,
+	Fs4,REST4,Fs4,REST4,Fs4,A4,Ab4,B4, A4,A4,A4,A4,E4,REST4,E4,REST4,
+	E4,E4,REST4,E4,B4,B4,Ab4,Ab4,A4,A4,A4,A4
+};
 
+osSemaphoreId_t musicSemaphore;
 
-
-
-//int finish_run[] = {
-	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, E4,E4,E4,E4, E4,REST4,D4,D4, D4,D4,D4,D4, D4,REST4,A4,A4,
-	//B4,B4,B4,B4, B4,REST4,B4,B4, B4,B4,B4,B4, B4,REST4,E4,E4, B4,B4,B4,B4, B4,REST4,E4,E4
-//};
-
-void play_finish(void *argument){
+void play_start(void *argument){
+	
+	
 	osDelay(2000);
-    int notes_num = sizeof(finish_run)/ sizeof(finish_run[0]);
- int beats_per_min = 500;
-	//400
+	int notes_num = sizeof(start_run)/ sizeof(start_run[0]);
+	int beats_per_min = 450;
  
- int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
+	int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
  
+
 	for(;;) {
+		osSemaphoreAcquire(musicSemaphore, osWaitForever);
+		if (dataPkt.playEndingMusic == true) {
+			osSemaphoreRelease(musicSemaphore);
+			//break;
+		}
 		for(int i = 0; i < notes_num; i++) {
  
-			int curr_musical_note = finish_run[i] - 18;
-  
+			if (dataPkt.playEndingMusic == true) {
+				osSemaphoreRelease(musicSemaphore);
+				break;
+			}
+			
+			int curr_musical_note = start_run[i] - 18;
+	
 			int period = MOD_music(curr_musical_note);
-  
+	
 			TPM0->MOD = period;
 			TPM0_C3V = period / 6; 
-  
+	
 			osDelay(one_beat); //all equal in length
 		}
- }
+		osSemaphoreRelease(musicSemaphore);
+	}
+	
+	
+}
+
+
+void play_finish(void *argument){
+	
+	
+	osDelay(2000);
+		int notes_num = sizeof(finish_run)/ sizeof(finish_run[0]);
+	int beats_per_min = 400;
+ 
+	int one_beat = 50000 / beats_per_min; //60000 ms = 60 seconds
+ 
+	//
+	for (;;) {
+		osSemaphoreAcquire(musicSemaphore, osWaitForever);
+		if (dataPkt.playEndingMusic == false) {
+			osSemaphoreRelease(musicSemaphore);
+		}
+		for(int i = 0; i < notes_num; i++) {
+
+			
+			if (dataPkt.playEndingMusic == false) {
+				osSemaphoreRelease(musicSemaphore);
+				break;
+			} 
+			
+			int curr_musical_note = finish_run[i] - 18;
+
+			int period = MOD_music(curr_musical_note);
+
+			TPM0->MOD = period;
+			TPM0_C3V = period / 6; 
+
+			osDelay(one_beat); //all equal in length
+		}
+		osSemaphoreRelease(musicSemaphore);
+	}
+	
+	
 }
 
 /*----------------------------------------------------------------------------
@@ -432,16 +499,18 @@ void play_finish(void *argument){
  *---------------------------------------------------------------------------*/
 
 osMutexId_t myMutex;
+
 osMutexId_t greenLedMutex;
 
 void parseCommand(void *argument) {
 	for (;;) {
 		//uint8_t command = UART2_Receive_Poll();
-		myDataPkt dataPkt;
+		
 		dataPkt.leftMotorStrength = (command & 0b00011000) >> 3;
 		dataPkt.rightMotorStrength = (command & 0b00000011);
-		dataPkt.backwardL = (command & 0b00000100) >> 2;
-		dataPkt.backwardR = (command & 0b00100000) >> 5;
+		dataPkt.backwardR = (command & 0b00000100) >> 2;
+		dataPkt.backwardL = (command & 0b00100000) >> 5;
+		dataPkt.isTurbo = (command & 0b01000000) >> 6;
 		if (dataPkt.leftMotorStrength == 0 && dataPkt.rightMotorStrength == 0) {
 			stationary = true;
 		} else {
@@ -462,62 +531,169 @@ void motor_thread(void *argument) {
 	for (;;) {
 		myDataPkt rxData;
 		osMessageQueueGet(commandQueue, &rxData, NULL, osWaitForever);
-		
+		/*
 		if (!rxData.leftMotorStrength && !rxData.rightMotorStrength) {
 			stationary = 1;
 		} else {
 			stationary = 0;
-		}
+		}*/
 		
 		if (!rxData.backwardL) {
-				PTB->PCOR |= MASK(BACKWARDSL);
-				
-			  switch(rxData.leftMotorStrength)
+			PTB->PCOR |= MASK(BACKWARDSL);
+			
+			if (rxData.isTurbo) { // forward left turbo
+				switch(rxData.leftMotorStrength)
 				{
 				case 0:
 					TPM2_C0V = 0;
 					break;
 				case 1:
-					TPM2_C0V = 4;
+					TPM2_C0V = 14 /** (1+rxData.isTurbo)*/;
 					break;
 				case 2:
-					TPM2_C0V = 6;
+					TPM2_C0V = 15 /** (1+rxData.isTurbo)*/;
 					break;
 				case 3:
-					TPM2_C0V = 8;
+					TPM2_C0V = 16 /** (1+rxData.isTurbo)*/;
 					break;
 				}
-				
-				//TPM2_C0V = rxData.leftMotorStrength + 1;
-		} else {
+			} else { // forward left normal
+				switch(rxData.leftMotorStrength)
+				{
+				case 0:
+					TPM2_C0V = 0;
+					break;
+				case 1:
+					TPM2_C0V = 10 /** (1+rxData.isTurbo)*/;
+					break;
+				case 2:
+					TPM2_C0V = 11 /** (1+rxData.isTurbo)*/;
+					break;
+				case 3:
+					TPM2_C0V = 12 /** (1+rxData.isTurbo)*/;
+					break;
+				}
+			}
+			
+			//TPM2_C0V = rxData.leftMotorStrength + 1;
+		} else { // back left turbo
 				PTB->PSOR |= MASK(BACKWARDSL);
-				TPM2_C0V = 3 - rxData.leftMotorStrength;
+
+				if (rxData.isTurbo) {
+					switch(rxData.leftMotorStrength)
+					{
+					case 0:
+						TPM2_C0V = 0;
+						break;
+					case 1:
+						TPM2_C0V = 2 /** (1+rxData.isTurbo)*/;
+						break;
+					case 2:
+						TPM2_C0V = 1 /** (1+rxData.isTurbo)*/;
+						break;
+					case 3:
+						TPM2_C0V = 0 /** (1+rxData.isTurbo)*/;
+						break;
+				}
+				} else { // back left normal
+					switch(rxData.leftMotorStrength)
+					{
+					case 0:
+						TPM2_C0V = 0;
+						break;
+					case 1:
+						TPM2_C0V = 5 /** (1+rxData.isTurbo)*/;
+						break;
+					case 2:
+						TPM2_C0V = 4 /** (1+rxData.isTurbo)*/;
+						break;
+					case 3:
+						TPM2_C0V = 3 /** (1+rxData.isTurbo)*/;
+						break;
+				}
+			}
+
+			
+				//TPM2_C0V = 3 - rxData.leftMotorStrength;
 		}
 		
 		
 		if (!rxData.backwardR) {
 				PTB->PCOR |= MASK(BACKWARDSR);
-				
+				//PTB->PSOR |= MASK(BACKWARDSR);
+			
+			if (rxData.isTurbo) { // forward right turbo
 				switch(rxData.rightMotorStrength)
 				{
 				case 0:
 					TPM2_C1V = 0;
 					break;
 				case 1:
-					TPM2_C1V = 4;
+					TPM2_C1V = 14 /** (1+rxData.isTurbo)*/;
 					break;
 				case 2:
-					TPM2_C1V = 6;
+					TPM2_C1V = 15 /** (1+rxData.isTurbo)*/;
 					break;
 				case 3:
-					TPM2_C1V = 8;
+					TPM2_C1V = 16 /** (1+rxData.isTurbo)*/;
 					break;
 				}
+			} else { // forward right normal
+				switch(rxData.rightMotorStrength)
+				{
+				case 0:
+					TPM2_C1V = 0;
+					break;
+				case 1:
+					TPM2_C1V = 10 /** (1+rxData.isTurbo)*/;
+					break;
+				case 2:
+					TPM2_C1V = 11 /** (1+rxData.isTurbo)*/;
+					break;
+				case 3:
+					TPM2_C1V = 12 /** (1+rxData.isTurbo)*/;
+					break;
+				}
+			}
 			
 				//TPM2_C1V = rxData.rightMotorStrength + 1;
-		} else {
+		} else { // Back right turbo
 				PTB->PSOR |= MASK(BACKWARDSR);
-				TPM2_C1V = 3 - rxData.rightMotorStrength;
+				
+				if (rxData.isTurbo) {
+					switch(rxData.rightMotorStrength)
+					{
+					case 0:
+						TPM2_C1V = 16;
+						break;
+					case 1:
+						TPM2_C1V = 2 /** (1+rxData.isTurbo)*/;
+						break;
+					case 2:
+						TPM2_C1V = 1 /** (1+rxData.isTurbo)*/;
+						break;
+					case 3:
+						TPM2_C1V = 0 /** (1+rxData.isTurbo)*/;
+						break;
+					}
+				} else { // Back right normal
+					switch(rxData.rightMotorStrength)
+					{
+					case 0:
+						TPM2_C1V = 16;
+						break;
+					case 1:
+						TPM2_C1V = 5 /** (1+rxData.isTurbo)*/;
+						break;
+					case 2:
+						TPM2_C1V = 4 /** (1+rxData.isTurbo)*/;
+						break;
+					case 3:
+						TPM2_C1V = 3 /** (1+rxData.isTurbo)*/;
+						break;
+					}
+				}
+				//TPM2_C1V = 3 - rxData.rightMotorStrength;
 		}
 			
 	}
@@ -620,7 +796,7 @@ static void delay(volatile uint32_t nof) {
 int main (void) {
  
   // System Initialization
-    SystemCoreClockUpdate();
+  SystemCoreClockUpdate();
 	InitGPIO();
 	offRGB();
 	initPWM(0);
@@ -640,7 +816,10 @@ int main (void) {
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
+	osThreadNew(play_start, NULL, &motorPriority);
 	osThreadNew(play_finish, NULL, &motorPriority);
+
+	musicSemaphore = osSemaphoreNew(1, 1, NULL);
   osKernelStart();                      // Start thread execution
 	
   for (;;) {
