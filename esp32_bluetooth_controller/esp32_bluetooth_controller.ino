@@ -52,6 +52,29 @@ void onDisconnectedController(ControllerPtr ctl) {
     }
 }
 
+void dumpGamepad(ControllerPtr ctl) {
+    Serial.printf(
+        "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
+        "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
+        ctl->index(),        // Controller Index
+        ctl->dpad(),         // D-pad
+        ctl->buttons(),      // bitmask of pressed buttons
+        ctl->axisX(),        // (-511 - 512) left X Axis
+        ctl->axisY(),        // (-511 - 512) left Y axis
+        ctl->axisRX(),       // (-511 - 512) right X axis
+        ctl->axisRY(),       // (-511 - 512) right Y axis
+        ctl->brake(),        // (0 - 1023): brake button
+        ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
+        ctl->miscButtons(),  // bitmask of pressed "misc" buttons
+        ctl->gyroX(),        // Gyro X
+        ctl->gyroY(),        // Gyro Y
+        ctl->gyroZ(),        // Gyro Z
+        ctl->accelX(),       // Accelerometer X
+        ctl->accelY(),       // Accelerometer Y
+        ctl->accelZ()        // Accelerometer Z
+    );
+}
+
 int32_t mod(int32_t integer) {
     if (integer < 0) {
       return -integer;
@@ -86,6 +109,8 @@ void processGamepad(ControllerPtr ctl) {
     Y -> X
     X -> Y
     */
+
+    // Move robot when joystick is moved
     int32_t xShifted = limit(ctl->axisX() >> CTL_AXIS_BITSHIFT);
     int32_t yShifted = -limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
 
@@ -155,8 +180,24 @@ void processGamepad(ControllerPtr ctl) {
                   ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3);    
     Serial.printf("Left: %d\n",leftSpeed);
     Serial.printf("Right: %d\n",rightSpeed);
-    Serial.println(movePacket);
-    Serial2.write(movePacket);
+    // Move robot when dpad is pressed
+    switch (ctl->dpad()) {
+      // Up button pressed
+      case 0x01:
+        break;
+
+      // Down
+      case 0x02:
+        break;
+
+      // Right
+      case 0x04:
+        break;
+
+      // Left
+      case 0x08:
+        break;
+    }
 
     if (ctl->a()) {
         // static int colorIdx = 0;
@@ -179,7 +220,9 @@ void processGamepad(ControllerPtr ctl) {
         // colorIdx++;
     }
 
+    // Play music when'A' button pressed on Nintendo Switch Controller
     if (ctl->b()) {
+      movePacket = 0x80;
         // // Turn on the 4 LED. Each bit represents one LED.
         // static int led = 0;
         // led++;
@@ -200,10 +243,12 @@ void processGamepad(ControllerPtr ctl) {
     }
 
     // Another way to query controller data is by getting the buttons() function.
-    // See how the different "dump*" functions dump the Controller info.
-    //dumpGamepad(ctl);
-}
+    // See how the different "dump*" functions dump the Controller info.-
+    dumpGamepad(ctl);
 
+    Serial.println(movePacket);
+    Serial2.write(movePacket);
+}
 
 void processControllers() {
     for (auto myController : myControllers) {
@@ -265,5 +310,5 @@ void loop() {
     // https://stackoverflow.com/questions/66278271/task-watchdog-got-triggered-the-tasks-did-not-reset-the-watchdog-in-time
 
     //     vTaskDelay(1);
-    delay(150);
+    //delay(150);
 }

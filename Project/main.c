@@ -528,10 +528,10 @@ void motor_thread(void *argument) {
 		
 		if (!rxData.backwardR) {
 				PTB->PCOR |= MASK(BACKWARDSR);
-				TPM2_C0V = rxData.rightMotorStrength;
+				TPM2_C1V = rxData.rightMotorStrength;
 		} else {
 				PTB->PSOR |= MASK(BACKWARDSR);
-				TPM2_C0V = 3 - rxData.rightMotorStrength;
+				TPM2_C1V = 3 - rxData.rightMotorStrength;
 		}
 			
 	}
