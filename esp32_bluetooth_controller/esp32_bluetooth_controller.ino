@@ -36,6 +36,7 @@ void onConnectedController(ControllerPtr ctl) {
 }
 
 void onDisconnectedController(ControllerPtr ctl) {
+    Serial2.write(0x00);
     bool foundController = false;
 
     for (int i = 0; i < BP32_MAX_GAMEPADS; i++) {
@@ -114,7 +115,7 @@ void processGamepad(ControllerPtr ctl) {
         if (yMod > xMod) {
           max = yMod;
         }
-        ctl->playDualRumble(0, 250, (1 << (max + 1)) - 1, (1 << (max + 1)) - 1);
+        ctl->playDualRumble(0, 250, (1 << (max + ctl->b())) - 1, (1 << (max + ctl->b())) - 1);
     }
 
     // Send UART command to move robot
@@ -152,6 +153,12 @@ void processGamepad(ControllerPtr ctl) {
 */
     int32_t leftSpeed = yShifted + xShifted;
     int32_t rightSpeed = yShifted - xShifted;
+
+    if (yShifted < 0) {
+      leftSpeed = yShifted - xShifted;
+      rightSpeed = yShifted + xShifted;
+    }
+
     if (leftSpeed < 0) {
       leftSpeed = max(-7, leftSpeed);
     } else {
@@ -185,21 +192,25 @@ void processGamepad(ControllerPtr ctl) {
         // Up button pressed
         case 0x01:
           movePacket = 0x1B;
+          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Down
         case 0x02:
           movePacket = 0x3F;
+          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Right
         case 0x04:
           movePacket = 0x1F;
+          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Left
         case 0x08:
           movePacket = 0x3B;
+          ctl->playDualRumble(0, 250, 127, 127);
           break;
       }
     }
@@ -237,6 +248,7 @@ void processControllers() {
 void setup() {
     Serial.begin(115200);
     Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
+    Serial2.write(0x00);
     Serial.printf("Firmware: %s\n", BP32.firmwareVersion());
     const uint8_t* addr = BP32.localBdAddress();
     Serial.printf("BD Addr: %2X:%2X:%2X:%2X:%2X:%2X\n", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
