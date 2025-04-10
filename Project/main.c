@@ -266,7 +266,7 @@ void initMotorPWM() { // TPM2
 	SIM->SOPT2 &= ~SIM_SOPT2_TPMSRC_MASK;
 	SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1); // 48MHz?
 	
-	TPM2->MOD = 3; // pg 554
+	TPM2->MOD = 7; // pg 554
 	TPM2_C0V = leftMotorSpeed;
 	TPM2_C1V = rightMotorSpeed;
 	
@@ -471,7 +471,24 @@ void motor_thread(void *argument) {
 		
 		if (!rxData.backwardL) {
 				PTB->PCOR |= MASK(BACKWARDSL);
-				TPM2_C0V = rxData.leftMotorStrength;
+				
+			  switch(rxData.leftMotorStrength)
+				{
+				case 0:
+					TPM2_C0V = 0;
+					break;
+				case 1:
+					TPM2_C0V = 4;
+					break;
+				case 2:
+					TPM2_C0V = 6;
+					break;
+				case 3:
+					TPM2_C0V = 8;
+					break;
+				}
+				
+				//TPM2_C0V = rxData.leftMotorStrength + 1;
 		} else {
 				PTB->PSOR |= MASK(BACKWARDSL);
 				TPM2_C0V = 3 - rxData.leftMotorStrength;
@@ -480,7 +497,24 @@ void motor_thread(void *argument) {
 		
 		if (!rxData.backwardR) {
 				PTB->PCOR |= MASK(BACKWARDSR);
-				TPM2_C1V = rxData.rightMotorStrength;
+				
+				switch(rxData.rightMotorStrength)
+				{
+				case 0:
+					TPM2_C1V = 0;
+					break;
+				case 1:
+					TPM2_C1V = 4;
+					break;
+				case 2:
+					TPM2_C1V = 6;
+					break;
+				case 3:
+					TPM2_C1V = 8;
+					break;
+				}
+			
+				//TPM2_C1V = rxData.rightMotorStrength + 1;
 		} else {
 				PTB->PSOR |= MASK(BACKWARDSR);
 				TPM2_C1V = 3 - rxData.rightMotorStrength;
@@ -508,6 +542,7 @@ void green_led_thread (void *argument) {
 	for (;;) {
 		//offGreenLEDs();
 		if (!stationary) {
+			offGreenLEDs();
 			ledControl(green_led1, led_on); // led_on
 			if (stationary)
 				continue;
@@ -585,7 +620,7 @@ static void delay(volatile uint32_t nof) {
 int main (void) {
  
   // System Initialization
-  SystemCoreClockUpdate();
+    SystemCoreClockUpdate();
 	InitGPIO();
 	offRGB();
 	initPWM(0);
