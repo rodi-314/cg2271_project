@@ -92,9 +92,6 @@ int32_t positive(int32_t integer) {
 }
   
 void processGamepad(ControllerPtr ctl) {
-    // There are different ways to query whether a button is pressed.
-    // By query each button individually:
-    //  a(), b(), x(), y(), l1(), etc...
     /*
     Nintendo Switch -> Xbox Button Mapping
     A -> B
@@ -109,8 +106,8 @@ void processGamepad(ControllerPtr ctl) {
 
     int32_t xMod = abs(xShifted);
     int32_t yMod = abs(yShifted);
-    //Serial.printf("x: %4d\n", xShifted);
-    //Serial.printf("y: %4d\n", yShifted);
+    // Serial.printf("x: %4d\n", xShifted);
+    // Serial.printf("y: %4d\n", yShifted);
     
     if (xMod > SPEED_THRESHOLD || yMod > SPEED_THRESHOLD) {
         int32_t max = xMod;
@@ -155,12 +152,12 @@ void processGamepad(ControllerPtr ctl) {
 */
     int32_t leftSpeed = yShifted + xShifted;
     int32_t rightSpeed = yShifted - xShifted;
-    if (leftSpeed<0) {
+    if (leftSpeed < 0) {
       leftSpeed = max(-7, leftSpeed);
     } else {
       leftSpeed = min(7, leftSpeed);
     }
-    if (rightSpeed<0) {
+    if (rightSpeed < 0) {
       rightSpeed = max(-7, rightSpeed);
     } else {
       rightSpeed = min(7, rightSpeed);
@@ -172,7 +169,6 @@ void processGamepad(ControllerPtr ctl) {
     // Set turbo mode if 'A' button is pressed on the Nintendo Switch Controller
     movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
                   ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3) | (ctl->b() << 6);
-                  
     // Serial.printf("Left: %d\n",leftSpeed);
     // Serial.printf("Right: %d\n",rightSpeed);
 
@@ -208,53 +204,12 @@ void processGamepad(ControllerPtr ctl) {
       }
     }
 
-    if (ctl->a()) {
-        // static int colorIdx = 0;
-        // // Some gamepads like DS4 and DualSense support changing the color LED.
-        // // It is possible to change it by calling:
-        // switch (colorIdx % 3) {
-        //     case 0:
-        //         // Red
-        //         ctl->setColorLED(255, 0, 0);
-        //         break;
-        //     case 1:
-        //         // Green
-        //         ctl->setColorLED(0, 255, 0);
-        //         break;
-        //     case 2:
-        //         // Blue
-        //         ctl->setColorLED(0, 0, 255);
-        //         break;
-        // }
-        // colorIdx++;
-    }
-
     // Play music when 'B' button pressed on Nintendo Switch Controller
     if (ctl->a()) {
       movePacket = 0x80;
-        // // Turn on the 4 LED. Each bit represents one LED.
-        // static int led = 0;
-        // led++;
-        // // Some gamepads like the DS3, DualSense, Nintendo Wii, Nintendo Switch
-        // // support changing the "Player LEDs": those 4 LEDs that usually indicate
-        // // the "gamepad seat".
-        // // It is possible to change them by calling:
-        // ctl->setPlayerLEDs(led & 0x0f);
     }
 
-    if (ctl->x()) {
-        // Some gamepads like DS3, DS4, DualSense, Switch, Xbox One S, Stadia support rumble.
-        // It is possible to set it by calling:
-        // Some controllers have two motors: "strong motor", "weak motor".
-        // It is possible to control them independently.
-        // ctl->playDualRumble(0 /* delayedStartMs */, 250 /* durationMs */, 0x80 /* weakMagnitude */,
-        //                     0x40 /* strongMagnitude */);
-    }
-
-    // Another way to query controller data is by getting the buttons() function.
-    // See how the different "dump*" functions dump the Controller info.-
     // dumpGamepad(ctl);
-
     // Serial.println(movePacket);
     Serial2.write(movePacket);
 }
@@ -294,14 +249,14 @@ void setup() {
     // Calling "forgetBluetoothKeys" in setup() just as an example.
     // Forgetting Bluetooth keys prevents "paired" gamepads to reconnect.
     // But it might also fix some connection / re-connection issues.
-    BP32.forgetBluetoothKeys();
+    // BP32.forgetBluetoothKeys();
 
     // Enables mouse / touchpad support for gamepads that support them.
     // When enabled, controllers like DualSense and DualShock4 generate two connected devices:
     // - First one: the gamepad
     // - Second one, which is a "virtual device", is a mouse.
     // By default, it is disabled.
-    BP32.enableVirtualDevice(false);
+    // BP32.enableVirtualDevice(false);
 }
 
 // Arduino loop function. Runs in CPU 1.
