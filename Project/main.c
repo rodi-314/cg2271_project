@@ -591,7 +591,7 @@ int main (void) {
 	commandQueue = osMessageQueueNew(1, sizeof(myDataPkt), NULL);
 	
 	// Music threads
-	//osThreadNew(play_finish, NULL, NULL);
+	osThreadNew(play_finish, NULL, &motorPriority);
   osKernelStart();                      // Start thread execution
 	
   for (;;) {
