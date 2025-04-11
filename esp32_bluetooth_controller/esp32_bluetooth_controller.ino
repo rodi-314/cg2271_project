@@ -3,7 +3,7 @@
 // Constants
 #define RXD2 16
 #define TXD2 17
-#define CTL_AXIS_BITSHIFT 6
+#define CTL_AXIS_BITSHIFT 7
 #define LEFT_SPEED_BITSHIFT 3
 #define SPEED_THRESHOLD 0
 #define LEFT_SPEED_MASK 0x38
@@ -102,20 +102,31 @@ void processGamepad(ControllerPtr ctl) {
     */
 
     // Move robot when joystick is moved
-    int32_t xShifted = limit(ctl->axisX() >> CTL_AXIS_BITSHIFT);
-    int32_t yShifted = -limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
+    Serial.printf("x original: %4d\n", ctl->axisX());
+    Serial.printf("y original: %4d\n", ctl->axisY());
+
+    // Scale x and y values evenly for UART
+    int32_t xShifted = ctl->axisX() / 167;
+    int32_t yShifted = -ctl->axisY() / 167;
+    
+    // // Bitshift and limit x and y values for UART
+    // int32_t xShifted = limit(ctl->axisX() >> CTL_AXIS_BITSHIFT);
+    // int32_t yShifted = -limit(ctl->axisY() >> CTL_AXIS_BITSHIFT);
+
+    // Check if turbo mode is turned on
+    bool isTurbo = ctl->b();
 
     int32_t xMod = abs(xShifted);
     int32_t yMod = abs(yShifted);
-    // Serial.printf("x: %4d\n", xShifted);
-    // Serial.printf("y: %4d\n", yShifted);
+    Serial.printf("x: %4d\n", xShifted);
+    Serial.printf("y: %4d\n", yShifted);
     
     if (xMod > SPEED_THRESHOLD || yMod > SPEED_THRESHOLD) {
         int32_t max = xMod;
         if (yMod > xMod) {
           max = yMod;
         }
-        ctl->playDualRumble(0, 250, (1 << (max + ctl->b())) - 1, (1 << (max + ctl->b())) - 1);
+        ctl->playDualRumble(0, 250, (1 << (max + 4 + isTurbo)) - 1, (1 << (max + 4 + isTurbo)) - 1);
     }
 
     // Send UART command to move robot
@@ -160,24 +171,21 @@ void processGamepad(ControllerPtr ctl) {
     }
 
     if (leftSpeed < 0) {
-      leftSpeed = max(-7, leftSpeed);
+      leftSpeed = max(-3, leftSpeed);
     } else {
-      leftSpeed = min(7, leftSpeed);
+      leftSpeed = min(3, leftSpeed);
     }
     if (rightSpeed < 0) {
-      rightSpeed = max(-7, rightSpeed);
+      rightSpeed = max(-3, rightSpeed);
     } else {
-      rightSpeed = min(7, rightSpeed);
+      rightSpeed = min(3, rightSpeed);
     }
-
-    leftSpeed /= 2;
-    rightSpeed /= 2;
     
     // Set turbo mode if 'A' button is pressed on the Nintendo Switch Controller
     movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
                   ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3) | (ctl->b() << 6);
-    // Serial.printf("Left: %d\n",leftSpeed);
-    // Serial.printf("Right: %d\n",rightSpeed);
+    Serial.printf("Left: %d\n",leftSpeed);
+    Serial.printf("Right: %d\n",rightSpeed);
 
     // Joystick is not pressed
     if (!xMod && !yMod) {
@@ -192,26 +200,29 @@ void processGamepad(ControllerPtr ctl) {
         // Up button pressed
         case 0x01:
           movePacket = 0x1B;
-          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Down
         case 0x02:
           movePacket = 0x3F;
-          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Right
         case 0x04:
           movePacket = 0x1F;
-          ctl->playDualRumble(0, 250, 127, 127);
           break;
 
         // Left
         case 0x08:
           movePacket = 0x3B;
-          ctl->playDualRumble(0, 250, 127, 127);
           break;
+      }
+
+      if (movePacket > 0 && isTurbo) {
+        movePacket += 0x40;
+        ctl->playDualRumble(0, 250, 255, 255);
+      } else if (movePacket > 0) {
+        ctl->playDualRumble(0, 250, 127, 127);
       }
     }
 
@@ -221,7 +232,7 @@ void processGamepad(ControllerPtr ctl) {
     }
 
     // dumpGamepad(ctl);
-    // Serial.println(movePacket);
+    Serial.println(movePacket);
     Serial2.write(movePacket);
 }
 
@@ -231,15 +242,6 @@ void processControllers() {
             if (myController->isGamepad()) {
                 processGamepad(myController);
             } 
-              // else if (myController->isMouse()) {
-              //     processMouse(myController);
-              // } else if (myController->isKeyboard()) {
-              //     processKeyboard(myController);
-              // } else if (myController->isBalanceBoard()) {
-              //     processBalanceBoard(myController);
-              // } else {
-              //     Serial.println("Unsupported controller");
-              // }
         }
     }
 }
