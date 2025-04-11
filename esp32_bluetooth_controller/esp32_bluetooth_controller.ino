@@ -102,8 +102,8 @@ void processGamepad(ControllerPtr ctl) {
     */
 
     // Move robot when joystick is moved
-    Serial.printf("x original: %4d\n", ctl->axisX());
-    Serial.printf("y original: %4d\n", ctl->axisY());
+    // Serial.printf("x original: %4d\n", ctl->axisX());
+    // Serial.printf("y original: %4d\n", ctl->axisY());
 
     // Scale x and y values evenly for UART
     int32_t xShifted = ctl->axisX() / 167;
@@ -118,8 +118,8 @@ void processGamepad(ControllerPtr ctl) {
 
     int32_t xMod = abs(xShifted);
     int32_t yMod = abs(yShifted);
-    Serial.printf("x: %4d\n", xShifted);
-    Serial.printf("y: %4d\n", yShifted);
+    // Serial.printf("x: %4d\n", xShifted);
+    // Serial.printf("y: %4d\n", yShifted);
     
     if (xMod > SPEED_THRESHOLD || yMod > SPEED_THRESHOLD) {
         int32_t max = xMod;
@@ -184,8 +184,8 @@ void processGamepad(ControllerPtr ctl) {
     // Set turbo mode if 'A' button is pressed on the Nintendo Switch Controller
     movePacket = (((rightSpeed < 0) << 2) | (abs(rightSpeed) & 0x3)) |
                   ((((leftSpeed < 0) << 2) | (abs(leftSpeed) & 0x3)) << 3) | (ctl->b() << 6);
-    Serial.printf("Left: %d\n",leftSpeed);
-    Serial.printf("Right: %d\n",rightSpeed);
+    // Serial.printf("Left: %d\n",leftSpeed);
+    // Serial.printf("Right: %d\n",rightSpeed);
 
     // Joystick is not pressed
     if (!xMod && !yMod) {
@@ -232,7 +232,7 @@ void processGamepad(ControllerPtr ctl) {
     }
 
     // dumpGamepad(ctl);
-    Serial.println(movePacket);
+    // Serial.println(movePacket);
     Serial2.write(movePacket);
 }
 
