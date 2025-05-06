@@ -4,6 +4,6 @@ This group project was completed as part of the CG2271 Real-Time Operating Syste
 
 As part of the assessment, the robotic car will undertake a Challenge Run, during which it must be remotely navigated through a physical maze while fulfilling all functional requirements. The robot's performance will be evaluated based on completion time, successful traversal of obstacles such as ramps, and compliance with specified movement and feedback behaviours.
 
-For more information and details, refer to the [project specifications](Project Specifications.pdf) and the [project video](https://youtu.be/ML_8rO3pDJ8).
+For more information and details, refer to the [project specifications](<Project Specifications.pdf>) and the [project video](https://youtu.be/ML_8rO3pDJ8).
 
 ![image](https://github.com/user-attachments/assets/111e9b83-9232-4821-a9e8-51625b49435a)
