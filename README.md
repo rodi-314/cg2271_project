@@ -1,4 +1,4 @@
-# CG2271 — Real-time Operating Systems Project
+# CG2271 Real-time Operating Systems Project
 
 This group project was completed as part of the CG2271 Real-Time Operating Systems course taught at the National University of Singapore (NUS). The objective of this project is to design and implement a real-time operating system (RTOS)-based robotic car on the ESP32 platform, controlled via a wireless game controller (Wi-Fi/Bluetooth). The system must employ FreeRTOS constructs, including multiple concurrent tasks, inter-task synchronisation mechanisms, and interrupt-driven serial communication. The robotic car is required to perform precise motor control for multidirectional movement, dynamic LED signalling based on motion state, and continuous audio playback through a buzzer. The software architecture must consist of at least four tasks (e.g., motor control, LED control, audio output, and command processing) alongside one interrupt service routine (ISR) for handling asynchronous control inputs.
 
